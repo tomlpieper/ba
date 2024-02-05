@@ -1,0 +1,360 @@
+from datasets import load_dataset, Dataset
+import pandas as pd
+import numpy as np
+from transformers import T5Tokenizer, T5ForConditionalGeneration, default_data_collator, Seq2SeqTrainingArguments, Seq2SeqTrainer, TrainerCallback
+from loguru import logger
+import random
+import json
+import torch
+import os
+from sklearn.metrics import f1_score, precision_score, recall_score
+import matplotlib.pyplot as plt
+from copy import deepcopy
+from loguru import logger
+from CustomTrainer import CustomTrainer
+
+from nltk.translate.bleu_score import sentence_bleu
+import numpy as np
+
+
+
+class BaseClassT5:   
+    
+    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None):
+        """
+        Initialize the T5 model and tokenizer.
+        """
+        self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+        self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model.to(self.device)
+        self.model_name = model_name
+        
+        # Splits to train model on 
+        self.train_split = None
+        self.test_split = None
+        self.dev_split = None
+        self.max_length_token_input = 600
+        self.max_length_token_output = 400
+
+
+        # Set default training arguments
+        if training_args is None:
+            self.training_args = Seq2SeqTrainingArguments(
+                predict_with_generate=True,
+                evaluation_strategy="epoch",
+                # per_device_train_batch_size=1,
+                per_device_eval_batch_size=1,
+                num_train_epochs=5,
+                learning_rate=5e-5,
+                output_dir="./t5-base-train",
+                fp16=True
+             # remove_unused_columns=False
+            )
+        else:
+            self.training_args = training_args
+
+
+
+    def load_dataset(self, dataset_name: str, splits: [str], path: str) -> None:
+        """
+        Load the dataset from the Huggingface datasets library.
+        """
+        try:
+            train = f"{dataset_name}_{splits[0]}"
+            test = f"{dataset_name}_{splits[1]}"
+            dev = f"{dataset_name}_{splits[2]}"
+
+            # Load datasets
+            datasets = load_dataset('json', data_files={
+                "train_r1": f"{path}{train}.json",
+                "test_r1": f"{path}{test}.json",
+                "dev_r1": f"{path}{dev}.json"
+            })
+
+            # Access splits
+            self.train_split = datasets['train_r1']
+            self.test_split = datasets['test_r1']
+            self.dev_split = datasets['dev_r1']
+
+            logger.success(f"Successfully loaded dataset {dataset_name} from {path}.")
+        except Exception as e:
+            logger.exception(f"Error loading dataset: {e}")
+
+
+    def concat_inputs_and_targets(self, dataset: Dataset) -> Dataset:
+        """
+        Concatenate the inputs and outputs in a way that the T5 learns what to predict.
+        """
+        try:
+            dataset = dataset.map(
+                lambda example: {'target': 'Label: ' + example['label']  + ' Rationale: ' + example['rationale']},
+                remove_columns=['label', 'rationale'],
+            )
+            dataset = dataset.map(
+                lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
+                remove_columns=['premise', 'hypothesis'],
+            )
+            return dataset
+        except Exception as e:
+            logger.exception(f"Error concatenating inputs and targets: {e}")
+
+
+    def preprocess_data(self, inputs):
+
+        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
+        # print("Model Inputs: {}".format(model_inputs))
+        labels = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
+        model_inputs["labels"] = labels["input_ids"]
+        # print(model_inputs)
+        return model_inputs
+
+
+
+    def compute_exact_match(self, eval_prediction):
+
+        predictions = eval_prediction.predictions
+        labels = eval_prediction.label_ids
+        preds = [self.tokenizer.decode(pred, skip_special_tokens=True) for pred in predictions]
+        refs = [self.tokenizer.decode(label, skip_special_tokens=True) for label in labels]
+        exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
+        accuracy = np.mean(exact_matches)
+        return {"exact_match_accuracy": accuracy}
+
+
+
+
+    def prepare_training(self) -> None:
+        """
+        Prepare the training data for the T5 model.
+        """
+        try:
+            self.train_split = self.concat_inputs_and_targets(self.train_split)
+            self.test_split = self.concat_inputs_and_targets(self.test_split)
+            self.dev_split = self.concat_inputs_and_targets(self.dev_split)
+            logger.success("Successfully prepared training data.")
+            logger.success(self.train_split)
+        except Exception as e:
+            logger.exception(f"Error preparing training data: {e}")
+
+        # Batched processing of the data using the tokenizer defined for the T5
+        try:
+            self.train_split = self.train_split.map(self.preprocess_data, batched=True)
+            # self.train_split = self.preprocess_data(self.train_split)
+            self.test_split = self.test_split.map(self.preprocess_data, batched=True)
+            self.dev_split = self.dev_split.map(self.preprocess_data, batched=True)
+
+        except Exception as e:
+            logger.exception(f"Error preprocessing data: {e}")
+
+        # Shuffle Datasets
+        self.train_split = self.train_split.shuffle(seed=42)
+        self.test_split = self.test_split.shuffle(seed=42)
+        self.dev_split = self.dev_split.shuffle(seed=42)
+
+
+
+    def compute_metrics(self, eval_prediction):
+        predictions, label_ids = eval_prediction
+        preds = [self.tokenizer.decode(pred, skip_special_tokens=True) for pred in predictions]
+        refs = [self.tokenizer.decode(label, skip_special_tokens=True) for label in label_ids]
+
+        label_accuracy = []
+        rationale_scores = []
+
+        precision_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
+        recall_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
+        f1_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
+
+        for pred, ref in zip(preds, refs):
+            if " Rationale: " in pred:
+                pred_label, pred_rationale = pred.split(" Rationale: ")
+                ref_label, ref_rationale = ref.split(" Rationale: ")
+
+                label_accuracy.append(int(pred_label.strip() == ref_label.strip()))
+                rationale_scores.append(sentence_bleu([ref_rationale.strip().split()], pred_rationale.strip().split()))
+
+                for label in ['Entailment', 'Neutral', 'Contradiction']:
+                    pred_label_binary = int(pred_label.split()[-1] == label)
+                    ref_label_binary = int(ref_label.split()[-1] == label)
+
+                    precision = precision_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+                    recall = recall_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+                    f1 = f1_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+
+                    precision_scores[label].append(precision)
+                    recall_scores[label].append(recall)
+                    f1_scores[label].append(f1)
+
+        metrics = {
+            "label_accuracy": np.mean(label_accuracy) if label_accuracy else 0,
+            "rationale_bleu_score": np.mean(rationale_scores) if rationale_scores else 0,
+            "precision": {label: np.mean(scores) for label, scores in precision_scores.items()},
+            "recall": {label: np.mean(scores) for label, scores in recall_scores.items()},
+            "f1_score": {label: np.mean(scores) for label, scores in f1_scores.items()},
+        }
+
+        return metrics
+    
+
+
+    def train(self) -> None:
+        """
+        Train the T5 model.
+        """
+        try:
+            all_metrics = {"epoch": [], "exact_match_accuracy": [], "label_accuracy": [], "rationale_bleu_score": [], "precision": [], "recall": [], "f1_score": []}
+
+            self.trainer = CustomTrainer(
+                model=self.model,
+                args=self.training_args,
+                train_dataset=self.train_split,
+                eval_dataset=self.dev_split,
+                data_collator=default_data_collator,
+                compute_metrics=self.compute_metrics
+                # callbacks=[MyCallback]
+            )
+            self.trainer.add_callback(CustomCallback(self.trainer)) 
+
+            train_result = self.trainer.train()
+            metrics = train_result.metrics 
+            logger.success("Successfully trained T5 model.")
+        except Exception as e:
+            logger.exception(f"Error training T5 model: {e}")
+
+
+    def save_metrics_to_json(self, metrics, file_path):
+        """
+        Save metrics to a JSON file.
+        """
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w') as json_file:
+                json.dump(metrics, json_file, indent=4)
+            logger.success(f"Metrics saved to {file_path}")
+        except Exception as e:
+            logger.exception(f"Error saving metrics to JSON file: {e}")
+
+    def analyze_metrics(self, path: str):
+        """
+        Analyze metrics using matplotlib.
+        """
+        try:
+            with open(path, 'r') as json_file:
+                metrics = json.load(json_file)
+
+            epochs = metrics["epoch"]
+            exact_match_accuracy = metrics["exact_match_accuracy"]
+            label_accuracy = metrics["label_accuracy"]
+            rationale_bleu_score = metrics["rationale_bleu_score"]
+            precision = metrics["precision"]
+            recall = metrics["recall"]
+            f1_score = metrics["f1_score"]
+
+            # Plotting example (you can customize this according to your requirements)
+            plt.plot(epochs, exact_match_accuracy, label='Exact Match Accuracy')
+            plt.plot(epochs, label_accuracy, label='Label Accuracy')
+            plt.plot(epochs, rationale_bleu_score, label='Rationale BLEU Score')
+            plt.xlabel('Epoch')
+            plt.ylabel('Score')
+            plt.title('Training Metrics')
+            plt.legend()
+            plt.show()
+
+        except Exception as e:
+            logger.exception(f"Error analyzing metrics: {e}")
+
+
+
+    def save_model_and_tokenizer(self, path: str, model_name: str = "model") -> None:
+        try:
+            # Save the trained model
+            model_save_path = f"{path}/{model_name}"
+
+            os.makedirs(model_save_path, exist_ok=True)
+            logger.debug(f"Path to save the model: {model_save_path}")
+            self.trainer.save_model(model_save_path)
+
+        except Exception as e:
+            logger.exception(f"Couldn't save model or tokenizer: {e}")
+
+
+
+    def run(self, dataset_name: str, splits:[], path_training_data: str, path_trained_model: str, final_model_name: str) -> None:
+        """
+        Run the T5 model.
+        """
+        try:
+            self.load_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
+            self.prepare_training()
+            self.train()
+            logger.success("Successfully ran T5 model.")
+            self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+
+
+        except Exception as e:
+            logger.exception(f"Error running T5 model: {e}")
+
+
+
+
+class CustomCallback(TrainerCallback):
+    "A callback that prints a message at the beginning of training"
+
+    def __init__(self, trainer) -> None:
+        super().__init__()
+        self._trainer = trainer
+        self._evaluated = False
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        print("Starting training")
+
+    def on_train_end(self, args, state, control, **kwargs):
+        print("Finished training")
+        dc = self.evaluate_on_training_data(state, control, train_and_eval=True)
+        if dc:
+            return dc
+
+    def on_init_end(self, args,  state, control, **kwargs):
+        print("Finished init of trainer")
+        os.makedirs("results", exist_ok=True)
+        # frac = self._trainer.get_current_fraction()
+        # print(frac)
+
+    def on_log(self, args, state, control, **kwargs):
+        pass
+
+
+    def on_save(self, args, state, control, **kwargs):
+        pass
+
+
+
+    def on_epoch_end(self, args, state, control, **kwargs):
+        pass
+
+    def on_evaluate(self, args, state, control, **kwargs):
+        # pass
+        dc = self.evaluate_on_training_data(state, control)
+        if dc:
+            return dc
+       
+
+    def evaluate_on_training_data(self, state, control, train_and_eval:bool = False, **kwargs):
+
+        print("\n")
+        # logger.info("Evaluating model on Training dat")
+
+        if not self._evaluated:
+            self._evaluated = True
+            control_copy = deepcopy(control)
+            if train_and_eval:
+                self._trainer.evaluate(metric_key_prefix="eval")
+            frac, size = self._trainer.get_current_fraction()
+            logger.debug(f"Subset of training data is {frac} of dataset, i.e. {len(size)} examples.")
+            self._trainer.evaluate(eval_dataset=self._trainer.train_dataset, metric_key_prefix="train", subset_fraction = frac)
+            state.save_to_json("results/eval_metrics.json")
+            return control_copy
+        else:
+            self._evaluated = False
+        

@@ -1,0 +1,14 @@
+.DS_Store
+*.pyc
+prompting/
+t5-anli-code.ipynb
+v1/__pycache__
+v1/.DS_Store
+v1/data/
+v1/data2/
+t5-flute.ipynb
+/v1/test_train/
+v1/full_r1/
+v1/full_r2/
+v1/full_r3/
+v1/model/
