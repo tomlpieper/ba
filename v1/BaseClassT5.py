@@ -21,38 +21,43 @@ import numpy as np
 class BaseClassT5:   
     
     def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None):
-        """
-        Initialize the T5 model and tokenizer.
-        """
-        self.tokenizer = T5Tokenizer.from_pretrained(model_name)
-        self.model = T5ForConditionalGeneration.from_pretrained(model_name)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model.to(self.device)
-        self.model_name = model_name
-        
-        # Splits to train model on 
-        self.train_split = None
-        self.test_split = None
-        self.dev_split = None
-        self.max_length_token_input = 600
-        self.max_length_token_output = 400
+            """
+            Initializes an instance of the BaseClassT5.
+
+            Args:
+                model_name (str): The name of the T5 model to be used. Defaults to "t5-base".
+                training_args (Seq2SeqTrainingArguments): The training arguments for the model. Defaults to None.
+            """
+            
+            self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+            self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.model.to(self.device)
+            self.model_name = model_name
+            
+            # Splits to train model on 
+            self.train_split = None
+            self.test_split = None
+            self.dev_split = None
+            self.max_length_token_input = 600
+            self.max_length_token_output = 400
 
 
-        # Set default training arguments
-        if training_args is None:
-            self.training_args = Seq2SeqTrainingArguments(
-                predict_with_generate=True,
-                evaluation_strategy="epoch",
-                # per_device_train_batch_size=1,
-                per_device_eval_batch_size=1,
-                num_train_epochs=5,
-                learning_rate=5e-5,
-                output_dir="./t5-base-train",
-                fp16=True
-             # remove_unused_columns=False
-            )
-        else:
-            self.training_args = training_args
+            # Set default training arguments
+            if training_args is None:
+                self.training_args = Seq2SeqTrainingArguments(
+                    predict_with_generate=True,
+                    evaluation_strategy="epoch",
+                    # per_device_train_batch_size=1,
+                    per_device_eval_batch_size=1,
+                    num_train_epochs=5,
+                    learning_rate=5e-5,
+                    output_dir="./t5-base-train",
+                    fp16=True
+                 # remove_unused_columns=False
+                )
+            else:
+                self.training_args = training_args
 
 
 
@@ -88,7 +93,7 @@ class BaseClassT5:
         """
         try:
             dataset = dataset.map(
-                lambda example: {'target': 'Label: ' + example['label']  + ' Rationale: ' + example['rationale']},
+                lambda example: {'target': example['label']  + ' Rationale: ' + example['rationale']},
                 remove_columns=['label', 'rationale'],
             )
             dataset = dataset.map(
@@ -155,7 +160,8 @@ class BaseClassT5:
 
 
     def compute_metrics(self, eval_prediction):
-        predictions, label_ids = eval_prediction
+        predictions = eval_prediction.predictions
+        label_ids = eval_prediction.label_ids
         preds = [self.tokenizer.decode(pred, skip_special_tokens=True) for pred in predictions]
         refs = [self.tokenizer.decode(label, skip_special_tokens=True) for label in label_ids]
 
@@ -165,6 +171,8 @@ class BaseClassT5:
         precision_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
         recall_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
         f1_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
+
+        exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
 
         for pred, ref in zip(preds, refs):
             if " Rationale: " in pred:
