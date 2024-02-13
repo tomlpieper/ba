@@ -1,3 +1,5 @@
+import warnings
+warnings.simplefilter("ignore", UserWarning)
 from datasets import load_dataset, Dataset
 import pandas as pd
 import numpy as np

@@ -21,8 +21,8 @@ class CustomTrainer(Seq2SeqTrainer):
         subset_indices = list(range(subset_start, len(self.train_dataset)))
 
         return current_fraction, subset_indices
-    
-    
+
+
     def evaluate(
         self,
         eval_dataset=None,
