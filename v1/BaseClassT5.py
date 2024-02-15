@@ -22,7 +22,7 @@ import numpy as np
 
 class BaseClassT5:   
     
-    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None):
+    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None, path_custom_logs: str = "results", baseline_model: bool = False) -> None:
             """
             Initializes an instance of the BaseClassT5.
 
@@ -36,6 +36,8 @@ class BaseClassT5:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model.to(self.device)
             self.model_name = model_name
+            self.baseline_model = baseline_model
+            self.path_custom_logs = path_custom_logs
             
             # Splits to train model on 
             self.train_split = None
@@ -63,7 +65,7 @@ class BaseClassT5:
 
 
 
-    def load_dataset(self, dataset_name: str, splits: [str], path: str) -> None:
+    def load_local_dataset(self, dataset_name: str, splits: [str], path: str) -> None:
         """
         Load the dataset from the Huggingface datasets library.
         """
@@ -139,6 +141,7 @@ class BaseClassT5:
             self.train_split = self.concat_inputs_and_targets(self.train_split)
             self.test_split = self.concat_inputs_and_targets(self.test_split)
             self.dev_split = self.concat_inputs_and_targets(self.dev_split)
+            self.dev_split = self.dev_split.select(range(10))
             logger.success("Successfully prepared training data.")
             logger.success(self.train_split)
         except Exception as e:
@@ -224,7 +227,7 @@ class BaseClassT5:
                 compute_metrics=self.compute_metrics
                 # callbacks=[MyCallback]
             )
-            self.trainer.add_callback(CustomCallback(self.trainer)) 
+            self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
 
             train_result = self.trainer.train()
             metrics = train_result.metrics 
@@ -295,11 +298,11 @@ class BaseClassT5:
         Run the T5 model.
         """
         try:
-            self.load_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
+            self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
             self.prepare_training()
             self.train()
             logger.success("Successfully ran T5 model.")
-            self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+            self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)
 
 
         except Exception as e:
@@ -311,10 +314,11 @@ class BaseClassT5:
 class CustomCallback(TrainerCallback):
     "A callback that prints a message at the beginning of training"
 
-    def __init__(self, trainer) -> None:
+    def __init__(self, trainer, custom_logs_path: str = "results") -> None:
         super().__init__()
         self._trainer = trainer
         self._evaluated = False
+        self.custom_logs_path = custom_logs_path
 
     def on_train_begin(self, args, state, control, **kwargs):
         print("Starting training")
@@ -327,9 +331,8 @@ class CustomCallback(TrainerCallback):
 
     def on_init_end(self, args,  state, control, **kwargs):
         print("Finished init of trainer")
-        os.makedirs("results", exist_ok=True)
-        # frac = self._trainer.get_current_fraction()
-        # print(frac)
+        os.makedirs(self.custom_logs_path, exist_ok=True)
+
 
     def on_log(self, args, state, control, **kwargs):
         pass
@@ -363,7 +366,7 @@ class CustomCallback(TrainerCallback):
             frac, size = self._trainer.get_current_fraction()
             logger.debug(f"Subset of training data is {frac} of dataset, i.e. {len(size)} examples.")
             self._trainer.evaluate(eval_dataset=self._trainer.train_dataset, metric_key_prefix="train", subset_fraction = frac)
-            state.save_to_json("results/eval_metrics.json")
+            state.save_to_json(self.custom_logs_path + "eval_metrics.json")
             return control_copy
         else:
             self._evaluated = False

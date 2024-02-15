@@ -50,23 +50,26 @@ if __name__ == "__main__":
     # create_modified_dataset(splits[3:6], amount_training_examples=100000, path='v1/full_r2/')
     # create_modified_dataset(splits[6:], amount_training_examples=1000000, path='v1/full_r3/')
     # create_modified_dataset(['test_r1'], amount_training_examples=100, path='data/')
+    result_dir = "results/"
+    logging_path =  result_dir + "t5-small-logs/"
     args = Seq2SeqTrainingArguments(
                 predict_with_generate=True,
                 evaluation_strategy="steps",
-                eval_steps=500,
-                per_device_train_batch_size=8,
-                per_device_eval_batch_size=8,
+                eval_steps=250,
+                per_device_train_batch_size=1,
+                per_device_eval_batch_size=1,
                 num_train_epochs=5,
                 learning_rate=5e-5,
-                output_dir="results/outputs",
+                output_dir= logging_path + "outputs",
                 fp16=use_cuda,
-                logging_dir="results/logs",
-                logging_steps=5000
+                logging_dir=logging_path + "logs",
+                logging_steps=250
              # remove_unused_columns=False
             )
     model = BaseClassT5(
         model_name="t5-small",
-        training_args=args
+        training_args=args,
+        path_custom_logs=logging_path,
     )
     model.run(
         dataset_name="modified_anli", 
