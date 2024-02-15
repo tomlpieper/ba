@@ -3,7 +3,7 @@ warnings.simplefilter("ignore", UserWarning)
 from datasets import load_dataset, Dataset
 import pandas as pd
 import numpy as np
-from transformers import T5Tokenizer, T5ForConditionalGeneration, default_data_collator, Seq2SeqTrainingArguments, Seq2SeqTrainer, TrainerCallback
+from transformers import T5Tokenizer, T5ForConditionalGeneration, default_data_collator, Seq2SeqTrainingArguments, Seq2SeqTrainer, TrainerCallback, AutoModelForSeq2SeqLM, AutoTokenizer
 from loguru import logger
 import random
 import json
@@ -22,7 +22,7 @@ import numpy as np
 
 class BaseClassT5:   
     
-    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None, path_custom_logs: str = "results", baseline_model: bool = False) -> None:
+    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None, path_custom_logs: str = "results", baseline_model: bool = False, flan: bool = False) -> None:
             """
             Initializes an instance of the BaseClassT5.
 
@@ -30,9 +30,12 @@ class BaseClassT5:
                 model_name (str): The name of the T5 model to be used. Defaults to "t5-base".
                 training_args (Seq2SeqTrainingArguments): The training arguments for the model. Defaults to None.
             """
-            
-            self.tokenizer = T5Tokenizer.from_pretrained(model_name)
-            self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+            if flan:
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            else:
+                self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+                self.model = T5ForConditionalGeneration.from_pretrained(model_name)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model.to(self.device)
             self.model_name = model_name
@@ -179,7 +182,7 @@ class BaseClassT5:
             self.dev_split = self.concat_inputs_and_targets(self.dev_split)
             # self.dev_split = self.dev_split.select(range(10))
             logger.success("Successfully prepared training data.")
-            logger.success(self.train_split)
+            # logger.success(self.train_split)
         except Exception as e:
             logger.exception(f"Error preparing training data: {e}")
 
@@ -339,7 +342,7 @@ class BaseClassT5:
         Run the T5 model.
         """
         if not self.baseline_model:
-            logger.debug(f"Running T5 model on {dataset_name}with rationale output.")
+            logger.debug(f"Running {self.model_name} on {dataset_name}with rationale output.")
             try:
                 self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
                 self.prepare_training()
@@ -353,7 +356,7 @@ class BaseClassT5:
 
 
         else:
-            logger.debug(f"Running T5 model on {dataset_name} without rationale output.")
+            logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
             try:
                 self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
                 self.train()
@@ -376,16 +379,16 @@ class CustomCallback(TrainerCallback):
         self.custom_logs_path = custom_logs_path
 
     def on_train_begin(self, args, state, control, **kwargs):
-        print("Starting training")
+        logger.info("Starting training")
 
     def on_train_end(self, args, state, control, **kwargs):
-        print("Finished training")
+        logger.info("Finished training")
         dc = self.evaluate_on_training_data(state, control, train_and_eval=True)
         if dc:
             return dc
 
     def on_init_end(self, args,  state, control, **kwargs):
-        print("Finished init of trainer")
+        # ("Finished init of trainer")
         os.makedirs(self.custom_logs_path, exist_ok=True)
 
 
@@ -419,7 +422,7 @@ class CustomCallback(TrainerCallback):
             if train_and_eval:
                 self._trainer.evaluate(metric_key_prefix="eval")
             frac, size = self._trainer.get_current_fraction()
-            logger.debug(f"Subset of training data is {frac} of dataset, i.e. {len(size)} examples.")
+            logger.debug(f"Subset of training data is {frac/2} of dataset, i.e. {len(size)} examples.")
             self._trainer.evaluate(eval_dataset=self._trainer.train_dataset, metric_key_prefix="train", subset_fraction = frac)
             state.save_to_json(self.custom_logs_path + "eval_metrics.json")
             return control_copy
