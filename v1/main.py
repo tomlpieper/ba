@@ -45,6 +45,9 @@ if __name__ == "__main__":
 
     use_cuda = torch.cuda.is_available()
     print(f"Using GPU: {use_cuda}")
+    train_batch_size = 16 if use_cuda else 4
+    eval_batch_size = 8 if use_cuda else 4
+
 
     # create_modified_dataset(splits[:3], amount_training_examples=100000, path='v1/full_r1/')
     # create_modified_dataset(splits[3:6], amount_training_examples=100000, path='v1/full_r2/')
@@ -58,8 +61,8 @@ if __name__ == "__main__":
                 predict_with_generate=True,
                 evaluation_strategy="steps",
                 eval_steps=250,
-                per_device_train_batch_size=1,
-                per_device_eval_batch_size=1,
+                per_device_train_batch_size=train_batch_size,
+                per_device_eval_batch_size=eval_batch_size,
                 num_train_epochs=5,
                 learning_rate=5e-5,
                 output_dir= logging_path + "outputs",
@@ -82,19 +85,13 @@ if __name__ == "__main__":
         final_model_name="secondT5"
     )
     
-    model_labels_only = BaseClassT5(
-        model_name="t5-small",
-        training_args=args,
-        path_custom_logs=logging_path_labels_only,
-        baseline_model=True
-    )
     
     args_labels_only = Seq2SeqTrainingArguments(
             predict_with_generate=True,
             evaluation_strategy="steps",
             eval_steps=250,
-            per_device_train_batch_size=1,
-            per_device_eval_batch_size=1,
+            per_device_train_batch_size=train_batch_size,
+            per_device_eval_batch_size=eval_batch_size,
             num_train_epochs=5,
             learning_rate=5e-5,
             output_dir= logging_path_labels_only + "outputs",
@@ -103,6 +100,14 @@ if __name__ == "__main__":
             logging_steps=250
             # remove_unused_columns=False
         )
+  
+    model_labels_only = BaseClassT5(
+        model_name="t5-small",
+        training_args=args_labels_only,
+        path_custom_logs=logging_path_labels_only,
+        baseline_model=True
+    )
+
     model_labels_only.run(
         dataset_name="anli", 
         splits=splits[:3],

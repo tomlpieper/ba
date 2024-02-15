@@ -105,7 +105,7 @@ class BaseClassT5:
     def load_and_process_dataset(self, dataset_name: str, splits: [str]):
         dataset = load_dataset(dataset_name)
         datasets = dataset.map(
-            lambda example: {'input': tokenizer.eos_token.join([example['premise'], example['hypothesis']])},
+            lambda example: {'input': self.tokenizer.eos_token.join([example['premise'], example['hypothesis']])},
             remove_columns=['premise', 'hypothesis'],
         )
         processed_dataset = datasets.map(
@@ -144,11 +144,11 @@ class BaseClassT5:
         return model_inputs
 
 
-    def preprocess_data(inputs):
+    def preprocess_data(self,inputs):
         # print("Inputs: {}".format(inputs))
-        model_inputs = tokenizer(inputs['input'], max_length=max_input_length, truncation=True,  padding='max_length')
+        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
-        labels = tokenizer([str(label) for label in inputs['label']], max_length=max_target_length, truncation=True,  padding='max_length')
+        labels = self.tokenizer([str(label) for label in inputs['label']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
         # print("Labels: {}".format(labels))
         model_inputs["labels"] = labels["input_ids"]
         # print(f"Model Inputs: {model_inputs}")
