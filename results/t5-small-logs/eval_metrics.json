@@ -1,0 +1,75 @@
+{
+  "best_metric": null,
+  "best_model_checkpoint": null,
+  "epoch": 0.014752744010385932,
+  "eval_steps": 250,
+  "global_step": 250,
+  "is_hyper_param_search": false,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 0.01,
+      "learning_rate": 4.985247255989614e-05,
+      "loss": 1.5081,
+      "step": 250
+    },
+    {
+      "epoch": 0.01,
+      "eval_f1_score": {
+        "Contradiction": NaN,
+        "Entailment": NaN,
+        "Neutral": NaN
+      },
+      "eval_label_accuracy": 0,
+      "eval_loss": 0.2469691038131714,
+      "eval_precision": {
+        "Contradiction": NaN,
+        "Entailment": NaN,
+        "Neutral": NaN
+      },
+      "eval_rationale_bleu_score": 0,
+      "eval_recall": {
+        "Contradiction": NaN,
+        "Entailment": NaN,
+        "Neutral": NaN
+      },
+      "eval_runtime": 6.8897,
+      "eval_samples_per_second": 1.451,
+      "eval_steps_per_second": 1.451,
+      "step": 250
+    },
+    {
+      "epoch": 0.01,
+      "step": 250,
+      "train_f1_score": {
+        "Contradiction": NaN,
+        "Entailment": NaN,
+        "Neutral": NaN
+      },
+      "train_label_accuracy": 0,
+      "train_loss": 0.26428842544555664,
+      "train_precision": {
+        "Contradiction": NaN,
+        "Entailment": NaN,
+        "Neutral": NaN
+      },
+      "train_rationale_bleu_score": 0,
+      "train_recall": {
+        "Contradiction": NaN,
+        "Entailment": NaN,
+        "Neutral": NaN
+      },
+      "train_runtime": 51.0936,
+      "train_samples_per_second": 1.957,
+      "train_steps_per_second": 1.957
+    }
+  ],
+  "logging_steps": 250,
+  "max_steps": 84730,
+  "num_train_epochs": 5,
+  "save_steps": 500,
+  "total_flos": 39650918400000.0,
+  "trial_name": null,
+  "trial_params": null
+}

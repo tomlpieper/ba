@@ -68,6 +68,17 @@ class BaseClassT5:
     def load_local_dataset(self, dataset_name: str, splits: [str], path: str) -> None:
         """
         Load the dataset from the Huggingface datasets library.
+
+        Args:
+            dataset_name (str): The name of the dataset.
+            splits (List[str]): A list of split names.
+            path (str): The path to the dataset files.
+
+        Returns:
+            None
+
+        Raises:
+            Exception: If there is an error loading the dataset.
         """
         try:
             train = f"{dataset_name}_{splits[0]}"
@@ -87,8 +98,22 @@ class BaseClassT5:
             self.dev_split = datasets['dev_r1']
 
             logger.success(f"Successfully loaded dataset {dataset_name} from {path}.")
-        except Exception as e:
+        except FileNotFoundError as e:
             logger.exception(f"Error loading dataset: {e}")
+
+
+    def load_and_process_dataset(self, dataset_name: str, splits: [str]):
+        dataset = load_dataset(dataset_name)
+        datasets = dataset.map(
+            lambda example: {'input': tokenizer.eos_token.join([example['premise'], example['hypothesis']])},
+            remove_columns=['premise', 'hypothesis'],
+        )
+        processed_dataset = datasets.map(
+        function=self.preprocess_data,
+        batched=True)
+        self.train_split = processed_dataset['train_r1']
+        self.test_split = processed_dataset['test_r1']
+        self.dev_split = processed_dataset['dev_r1']
 
 
     def concat_inputs_and_targets(self, dataset: Dataset) -> Dataset:
@@ -109,13 +134,24 @@ class BaseClassT5:
             logger.exception(f"Error concatenating inputs and targets: {e}")
 
 
-    def preprocess_data(self, inputs):
+    def preprocess_local_data(self, inputs):
 
         model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
         labels = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
         model_inputs["labels"] = labels["input_ids"]
         # print(model_inputs)
+        return model_inputs
+
+
+    def preprocess_data(inputs):
+        # print("Inputs: {}".format(inputs))
+        model_inputs = tokenizer(inputs['input'], max_length=max_input_length, truncation=True,  padding='max_length')
+        # print("Model Inputs: {}".format(model_inputs))
+        labels = tokenizer([str(label) for label in inputs['label']], max_length=max_target_length, truncation=True,  padding='max_length')
+        # print("Labels: {}".format(labels))
+        model_inputs["labels"] = labels["input_ids"]
+        # print(f"Model Inputs: {model_inputs}")
         return model_inputs
 
 
@@ -149,10 +185,10 @@ class BaseClassT5:
 
         # Batched processing of the data using the tokenizer defined for the T5
         try:
-            self.train_split = self.train_split.map(self.preprocess_data, batched=True)
-            # self.train_split = self.preprocess_data(self.train_split)
-            self.test_split = self.test_split.map(self.preprocess_data, batched=True)
-            self.dev_split = self.dev_split.map(self.preprocess_data, batched=True)
+            self.train_split = self.train_split.map(self.preprocess_local_data, batched=True)
+            # self.train_split = self.preprocess_local_data(self.train_split)
+            self.test_split = self.test_split.map(self.preprocess_local_data, batched=True)
+            self.dev_split = self.dev_split.map(self.preprocess_local_data, batched=True)
 
         except Exception as e:
             logger.exception(f"Error preprocessing data: {e}")
@@ -218,13 +254,18 @@ class BaseClassT5:
         try:
             all_metrics = {"epoch": [], "exact_match_accuracy": [], "label_accuracy": [], "rationale_bleu_score": [], "precision": [], "recall": [], "f1_score": []}
 
+            if self.baseline_model:
+                metrics = self.compute_exact_match
+            else:
+                metrics = self.compute_metrics
+
             self.trainer = CustomTrainer(
                 model=self.model,
                 args=self.training_args,
                 train_dataset=self.train_split,
                 eval_dataset=self.dev_split,
                 data_collator=default_data_collator,
-                compute_metrics=self.compute_metrics
+                compute_metrics=metrics
                 # callbacks=[MyCallback]
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
@@ -297,16 +338,30 @@ class BaseClassT5:
         """
         Run the T5 model.
         """
-        try:
-            self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
-            self.prepare_training()
-            self.train()
-            logger.success("Successfully ran T5 model.")
-            self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)
+        if not self.baseline_model:
+            logger.debug(f"Running T5 model on {dataset_name}with rationale output.")
+            try:
+                self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
+                self.prepare_training()
+                self.train()
+                logger.success("Successfully ran T5 model.")
+                self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)
 
 
-        except Exception as e:
-            logger.exception(f"Error running T5 model: {e}")
+            except Exception as e:
+                logger.exception(f"Error running T5 model: {e}")
+
+
+        else:
+            logger.debug(f"Running T5 model on {dataset_name} without rationale output.")
+            try:
+                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                self.train()
+                logger.success("Successfully ran T5 model.")
+                self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)
+
+            except Exception as e:
+                logger.exception(f"Error running T5 model: {e}")
 
 
 
