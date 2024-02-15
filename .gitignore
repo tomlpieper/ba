@@ -14,4 +14,7 @@ v1/full_r3/
 v1/model/
 /results_labels/
 /results/outputs/
-/results/
+# /results/
+results/t5-small-logs
+results/t5-small-logs-labels-only/outputs
+results/t5-small-logs-labels-only/t5-small-labels

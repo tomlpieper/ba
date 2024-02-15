@@ -177,7 +177,7 @@ class BaseClassT5:
             self.train_split = self.concat_inputs_and_targets(self.train_split)
             self.test_split = self.concat_inputs_and_targets(self.test_split)
             self.dev_split = self.concat_inputs_and_targets(self.dev_split)
-            self.dev_split = self.dev_split.select(range(10))
+            # self.dev_split = self.dev_split.select(range(10))
             logger.success("Successfully prepared training data.")
             logger.success(self.train_split)
         except Exception as e:
