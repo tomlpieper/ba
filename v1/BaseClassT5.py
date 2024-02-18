@@ -30,12 +30,12 @@ class BaseClassT5:
                 model_name (str): The name of the T5 model to be used. Defaults to "t5-base".
                 training_args (Seq2SeqTrainingArguments): The training arguments for the model. Defaults to None.
             """
-            if flan:
-                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-            else:
-                self.tokenizer = T5Tokenizer.from_pretrained(model_name)
-                self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+            # if flan:
+            #     self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            #     self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            # else:
+            self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+            self.model = T5ForConditionalGeneration.from_pretrained(model_name)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model.to(self.device)
             self.model_name = model_name
@@ -108,7 +108,7 @@ class BaseClassT5:
     def load_and_process_dataset(self, dataset_name: str, splits: [str]):
         dataset = load_dataset(dataset_name)
         datasets = dataset.map(
-            lambda example: {'input': self.tokenizer.eos_token.join([example['premise'], example['hypothesis']])},
+            lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
             remove_columns=['premise', 'hypothesis'],
         )
         processed_dataset = datasets.map(
@@ -152,7 +152,6 @@ class BaseClassT5:
         model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
         labels = self.tokenizer([str(label) for label in inputs['label']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
-        # print("Labels: {}".format(labels))
         model_inputs["labels"] = labels["input_ids"]
         # print(f"Model Inputs: {model_inputs}")
         return model_inputs
@@ -359,6 +358,7 @@ class BaseClassT5:
             logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
             try:
                 self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                logger.debug(self.train_split[0])
                 self.train()
                 logger.success("Successfully ran T5 model.")
                 self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)

@@ -18,3 +18,14 @@ v1/model/
 results/t5-small-logs
 results/t5-small-logs-labels-only/outputs
 results/t5-small-logs-labels-only/t5-small-labels
+results/t5-small-logs_new_lr/outputs
+results/t5-small-logs_new_lr/t5-small
+
+results/t5-small-logs-labels-only_ne_lr/outputs
+results/t5-small-logs-labels-only_ne_lr/t5-small-labels_new_lr
+
+results/t5-small-logs-labels-only0.0003/outputs
+results/t5-small-logs-labels-only0.0003/t5-small-labels
+
+results/t5-small-logs0.0003/t5-small
+results/t5-small-logs0.0003/outputs
