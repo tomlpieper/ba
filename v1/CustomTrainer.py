@@ -1,7 +1,91 @@
 from transformers import Seq2SeqTrainer
 import random
+import torch
+import torch.nn.functional as F
+from transformers import unwrap_model, MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
 
 class CustomTrainer(Seq2SeqTrainer):
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the CustomTrainer object.
+
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+                split_loss (bool): Flag indicating whether to split the loss.
+                ratio (tuple): A tuple representing the ratio for splitting the loss.
+
+        Returns:
+            None
+        """
+        super().__init__(*args, **kwargs)
+        self.split_loss = kwargs.pop("split_loss", False)
+        self.ratio: (float) = kwargs.pop("ratio", (0.5,0.5))
+
+
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        """
+        Computes the loss for the given model and inputs.
+
+        Args:
+            model (torch.nn.Module): The model to compute the loss for.
+            inputs (dict): The inputs to the model.
+            return_outputs (bool, optional): Whether to return the outputs along with the loss. 
+                Defaults to False.
+
+        Returns:
+            Union[Tuple[torch.Tensor, dict], torch.Tensor]: The computed loss. If `return_outputs` is True,
+            a tuple containing the loss and the outputs is returned. Otherwise, only the loss is returned.
+        """
+
+        if not self.split_loss:
+            return super().compute_loss(model, inputs, return_outputs)
+
+        # Compute loss in a split way for the first token and the rest of the sequence
+        if self.label_smoother is not None and "labels" in inputs:
+            labels = inputs.pop("labels")
+        else:
+            labels = None
+        outputs = model(**inputs)
+
+        # Save past state if it exists
+        if self.args.past_index >= 0:
+            self._past = outputs[self.args.past_index]
+
+        if labels is not None:
+            unwrapped_model = unwrap_model(model)
+            model_name = unwrapped_model.base_model.model._get_name() if _is_peft_model(unwrapped_model) else unwrapped_model._get_name()
+
+            # Assuming outputs.logits shape is [batch_size, sequence_length, vocab_size]
+            logits = outputs.logits
+
+            # Split the logits and labels for the first token and the rest
+            first_token_logits = logits[:, 0, :]
+            rest_tokens_logits = logits[:, 1:, :]
+
+            first_token_labels = labels[:, 0]
+            rest_tokens_labels = labels[:, 1:]
+
+            # Compute loss for the first token and the rest
+            loss_fn = torch.nn.CrossEntropyLoss()
+            first_token_loss = loss_fn(first_token_logits, first_token_labels)
+            rest_tokens_loss = loss_fn(rest_tokens_logits.view(-1, rest_tokens_logits.size(-1)), rest_tokens_labels.view(-1))
+
+            # Combine the two losses, giving them equal weight
+            loss = 0.5 * first_token_loss + 0.5 * rest_tokens_loss
+        else:
+            # Handle case where loss is directly returned by the model
+            if isinstance(outputs, dict) and "loss" not in outputs:
+                raise ValueError(
+                    "The model did not return a loss from the inputs, only the following keys: "
+                    f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
+                )
+            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+
+        return (loss, outputs) if return_outputs else loss
+
 
     def get_current_fraction(self, max_subset_size=1000):
         total_steps = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
