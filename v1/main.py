@@ -56,13 +56,13 @@ if __name__ == "__main__":
     lr = 3e-4
     lr_str = str(lr)
     result_dir = "results/"
-    logging_path =  result_dir + "t5-base-logs" + lr_str + "/"
+    logging_path =  result_dir + "t5-base-logs-split-loss" + lr_str + "/"
     logging_path_labels_only = result_dir + "t5-base-logs-labels-only" + lr_str + "/"
 
     args = Seq2SeqTrainingArguments(
                 predict_with_generate=True,
                 evaluation_strategy="steps",
-                eval_steps=500,
+                eval_steps=50,
                 per_device_train_batch_size=train_batch_size,
                 per_device_eval_batch_size=eval_batch_size,
                 num_train_epochs=5,
@@ -70,13 +70,14 @@ if __name__ == "__main__":
                 output_dir= logging_path + "outputs",
                 fp16=use_cuda,
                 logging_dir=logging_path + "logs",
-                logging_steps=500
+                logging_steps=50
              # remove_unused_columns=False
             )
     model = BaseClassT5(
-        model_name="t5-base",
+        model_name="t5-small",
         training_args=args,
         path_custom_logs=logging_path,
+        split_loss=True
     )
     model.run(
         dataset_name="modified_anli", 
@@ -84,40 +85,40 @@ if __name__ == "__main__":
         path_training_data="v1/full_r1/",
         # path_training_data="v1/data/",
         path_trained_model=logging_path,
-        final_model_name="t5-base"
+        final_model_name="t5-small"
     )
     
     
-    args_labels_only = Seq2SeqTrainingArguments(
-            predict_with_generate=True,
-            evaluation_strategy="steps",
-            eval_steps=500,
-            per_device_train_batch_size=train_batch_size,
-            per_device_eval_batch_size=eval_batch_size,
-            num_train_epochs=5,
-            learning_rate=lr,
-            output_dir= logging_path_labels_only + "outputs",
-            fp16=use_cuda,
-            logging_dir=logging_path_labels_only + "logs",
-            logging_steps=500
-            # remove_unused_columns=False
-        )
+    # args_labels_only = Seq2SeqTrainingArguments(
+    #         predict_with_generate=True,
+    #         evaluation_strategy="steps",
+    #         eval_steps=500,
+    #         per_device_train_batch_size=train_batch_size,
+    #         per_device_eval_batch_size=eval_batch_size,
+    #         num_train_epochs=5,
+    #         learning_rate=lr,
+    #         output_dir= logging_path_labels_only + "outputs",
+    #         fp16=use_cuda,
+    #         logging_dir=logging_path_labels_only + "logs",
+    #         logging_steps=500
+    #         # remove_unused_columns=False
+    #     )
   
-    model_labels_only = BaseClassT5(
-        model_name="t5-base",
-        training_args=args_labels_only,
-        path_custom_logs=logging_path_labels_only,
-        baseline_model=True
-    )
+    # model_labels_only = BaseClassT5(
+    #     model_name="t5-base",
+    #     training_args=args_labels_only,
+    #     path_custom_logs=logging_path_labels_only,
+    #     baseline_model=True
+    # )
 
-    model_labels_only.run(
-        dataset_name="anli", 
-        splits=splits[:3],
-        path_training_data="v1/full_r1/",
-        # path_training_data="v1/data/",
-        path_trained_model=logging_path_labels_only,
-        final_model_name="t5-base-labels"
-    )
+    # model_labels_only.run(
+    #     dataset_name="anli", 
+    #     splits=splits[:3],
+    #     path_training_data="v1/full_r1/",
+    #     # path_training_data="v1/data/",
+    #     path_trained_model=logging_path_labels_only,
+    #     final_model_name="t5-base-labels"
+    # )
 
 # Run the FLAN model
     # logging_path_flan = result_dir + "flan-t5-small/"

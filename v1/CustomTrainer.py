@@ -2,7 +2,8 @@ from transformers import Seq2SeqTrainer
 import random
 import torch
 import torch.nn.functional as F
-from transformers import unwrap_model, MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+from transformers.modeling_utils import PreTrainedModel, load_sharded_checkpoint, unwrap_model
+from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES, MODEL_MAPPING_NAMES
 
 class CustomTrainer(Seq2SeqTrainer):
 
@@ -19,9 +20,9 @@ class CustomTrainer(Seq2SeqTrainer):
         Returns:
             None
         """
-        super().__init__(*args, **kwargs)
         self.split_loss = kwargs.pop("split_loss", False)
-        self.ratio: (float) = kwargs.pop("ratio", (0.5,0.5))
+        self.ratio: tuple = kwargs.pop("ratio", (0.5,0.5))
+        super().__init__(*args, **kwargs)
 
 
 
@@ -39,17 +40,23 @@ class CustomTrainer(Seq2SeqTrainer):
             Union[Tuple[torch.Tensor, dict], torch.Tensor]: The computed loss. If `return_outputs` is True,
             a tuple containing the loss and the outputs is returned. Otherwise, only the loss is returned.
         """
-
+        # raise ValueError("Inputs are: ", inputs, "Model is: ", model, "Return outputs is: ", return_outputs)
         if not self.split_loss:
+            raise ValueError("Using standard loss function")
             return super().compute_loss(model, inputs, return_outputs)
 
         # Compute loss in a split way for the first token and the rest of the sequence
         if self.label_smoother is not None and "labels" in inputs:
             labels = inputs.pop("labels")
+        elif "labels" in inputs:
+            print("No labels smoother are used")
+            labels = inputs.pop("labels")
         else:
             labels = None
-        outputs = model(**inputs)
-
+            
+            
+        outputs = model(**inputs) 
+        
         # Save past state if it exists
         if self.args.past_index >= 0:
             self._past = outputs[self.args.past_index]
@@ -75,6 +82,8 @@ class CustomTrainer(Seq2SeqTrainer):
 
             # Combine the two losses, giving them equal weight
             loss = 0.5 * first_token_loss + 0.5 * rest_tokens_loss
+            
+            raise ValueError("Computed split loss")
         else:
             # Handle case where loss is directly returned by the model
             if isinstance(outputs, dict) and "loss" not in outputs:
@@ -82,8 +91,9 @@ class CustomTrainer(Seq2SeqTrainer):
                     "The model did not return a loss from the inputs, only the following keys: "
                     f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
                 )
-            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
 
+            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+            raise ValueError("Called custom function for loss and computed loss is: ", loss, "Returned output: ", outputs)
         return (loss, outputs) if return_outputs else loss
 
 

@@ -22,7 +22,7 @@ import numpy as np
 
 class BaseClassT5:   
     
-    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None, path_custom_logs: str = "results", baseline_model: bool = False, flan: bool = False) -> None:
+    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None, path_custom_logs: str = "results", baseline_model: bool = False, flan: bool = False, split_loss: bool = False) -> None:
             """
             Initializes an instance of the BaseClassT5.
 
@@ -39,6 +39,7 @@ class BaseClassT5:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model.to(self.device)
             self.model_name = model_name
+            self.split_loss = split_loss
             self.baseline_model = baseline_model
             self.path_custom_logs = path_custom_logs
             
@@ -139,7 +140,7 @@ class BaseClassT5:
 
     def preprocess_local_data(self, inputs):
 
-        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
+        model_inputs = self.tokenizer(inputs['input'], padding=True, max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
         labels = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
         model_inputs["labels"] = labels["input_ids"]
@@ -149,7 +150,7 @@ class BaseClassT5:
 
     def preprocess_data(self,inputs):
         # print("Inputs: {}".format(inputs))
-        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
+        model_inputs = self.tokenizer(inputs['input'], padding=True, max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
         labels = self.tokenizer([str(label) for label in inputs['label']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
         model_inputs["labels"] = labels["input_ids"]
@@ -267,7 +268,8 @@ class BaseClassT5:
                 train_dataset=self.train_split,
                 eval_dataset=self.dev_split,
                 data_collator=default_data_collator,
-                compute_metrics=metrics
+                compute_metrics=metrics,
+                split_loss=self.split_loss
                 # callbacks=[MyCallback]
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
