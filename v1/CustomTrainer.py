@@ -49,13 +49,13 @@ class CustomTrainer(Seq2SeqTrainer):
         if self.label_smoother is not None and "labels" in inputs:
             labels = inputs.pop("labels")
         elif "labels" in inputs:
-            print("No labels smoother are used")
+            # print("No labels smoother are used")
             labels = inputs.pop("labels")
         else:
             labels = None
             
             
-        outputs = model(**inputs) 
+        outputs = model(**inputs)
         
         # Save past state if it exists
         if self.args.past_index >= 0:
@@ -63,7 +63,6 @@ class CustomTrainer(Seq2SeqTrainer):
 
         if labels is not None:
             unwrapped_model = unwrap_model(model)
-            model_name = unwrapped_model.base_model.model._get_name() if _is_peft_model(unwrapped_model) else unwrapped_model._get_name()
 
             # Assuming outputs.logits shape is [batch_size, sequence_length, vocab_size]
             logits = outputs.logits
@@ -83,7 +82,6 @@ class CustomTrainer(Seq2SeqTrainer):
             # Combine the two losses, giving them equal weight
             loss = 0.5 * first_token_loss + 0.5 * rest_tokens_loss
             
-            raise ValueError("Computed split loss")
         else:
             # Handle case where loss is directly returned by the model
             if isinstance(outputs, dict) and "loss" not in outputs:
@@ -93,7 +91,6 @@ class CustomTrainer(Seq2SeqTrainer):
                 )
 
             loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
-            raise ValueError("Called custom function for loss and computed loss is: ", loss, "Returned output: ", outputs)
         return (loss, outputs) if return_outputs else loss
 
 

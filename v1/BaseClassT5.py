@@ -140,17 +140,25 @@ class BaseClassT5:
 
     def preprocess_local_data(self, inputs):
 
-        model_inputs = self.tokenizer(inputs['input'], padding=True, max_length=self.max_length_token_input, truncation=True,  padding='max_length')
+        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
-        labels = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
-        model_inputs["labels"] = labels["input_ids"]
+        encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length', return_tensors="pt")
+        model_inputs["labels"] = encoded_targets["input_ids"]
+
+
+        decoder_input_ids = encoded_targets['input_ids']
+        # Shift the `decoder_input_ids` to the right and add the start token at the beginning
+        # Note: T5 uses the pad token as the start token for decoder_input_ids
+        decoder_start_token_id = self.tokenizer.pad_token_id
+        decoder_input_ids = torch.cat([torch.full((decoder_input_ids.shape[0], 1), decoder_start_token_id, dtype=torch.long), decoder_input_ids[:, :-1]], dim=1)
+        inputs['decoder_input_ids'] = decoder_input_ids
         # print(model_inputs)
         return model_inputs
 
 
     def preprocess_data(self,inputs):
         # print("Inputs: {}".format(inputs))
-        model_inputs = self.tokenizer(inputs['input'], padding=True, max_length=self.max_length_token_input, truncation=True,  padding='max_length')
+        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
         labels = self.tokenizer([str(label) for label in inputs['label']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
         model_inputs["labels"] = labels["input_ids"]
@@ -343,7 +351,7 @@ class BaseClassT5:
         Run the T5 model.
         """
         if not self.baseline_model:
-            logger.debug(f"Running {self.model_name} on {dataset_name}with rationale output.")
+            logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
             try:
                 self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
                 self.prepare_training()
