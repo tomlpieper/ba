@@ -77,7 +77,8 @@ if __name__ == "__main__":
         model_name="t5-small",
         training_args=args,
         path_custom_logs=logging_path,
-        split_loss=True
+        split_loss=True,
+        ratio=(0.5, 0.5)
     )
     model.run(
         dataset_name="modified_anli", 
