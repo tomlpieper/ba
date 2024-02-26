@@ -117,7 +117,7 @@ class CustomTrainer(Seq2SeqTrainer):
             # Compute loss for the first token and the rest
             loss_fn = torch.nn.CrossEntropyLoss()
             first_token_loss = loss_fn(first_token_logits, first_token_labels)
-            rest_tokens_loss = loss_fn(rest_tokens_logits.view(-1, rest_tokens_logits.size(-1)), rest_tokens_labels.view(-1))
+            rest_tokens_loss = loss_fn(rest_tokens_logits.reshape(-1, rest_tokens_logits.size(-1)), rest_tokens_labels.reshape(-1))
 
             # Combine the two losses, giving them equal weight
             loss = self.ratio[0] * first_token_loss + self.ratio[1] * rest_tokens_loss
