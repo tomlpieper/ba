@@ -6,6 +6,46 @@ from transformers.modeling_utils import PreTrainedModel, load_sharded_checkpoint
 from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES, MODEL_MAPPING_NAMES
 
 class CustomTrainer(Seq2SeqTrainer):
+    """
+    A custom trainer class for sequence-to-sequence models.
+
+    Args:
+        *args: Variable length argument list.
+        **kwargs: Arbitrary keyword arguments.
+            split_loss (bool): Flag indicating whether to split the loss.
+            ratio (tuple): A tuple representing the ratio for splitting the loss.
+
+    Attributes:
+        split_loss (bool): Flag indicating whether to split the loss.
+        ratio (tuple): A tuple representing the ratio for splitting the loss.
+
+    Methods:
+        __init__: Initialize the CustomTrainer object.
+        compute_loss: Computes the loss for the given model and inputs.
+        get_current_fraction: Calculates the current fraction of training progress and returns the subset indices based on the current fraction.
+        evaluate: Evaluates the model on the evaluation dataset.
+        create_subset: Creates a subset of the dataset using the provided indices.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the CustomTrainer object.
+
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+                split_loss (bool): Flag indicating whether to split the loss.
+                ratio (tuple): A tuple representing the ratio for splitting the loss.
+
+        Returns:
+            None
+        """
+        self.split_loss = kwargs.pop("split_loss", False)
+        self.ratio: tuple = kwargs.pop("ratio", (0.5,0.5))
+        super().__init__(*args, **kwargs)
+
+    # Rest of the code...
+class CustomTrainer(Seq2SeqTrainer):
 
     def __init__(self, *args, **kwargs):
         """
@@ -95,23 +135,33 @@ class CustomTrainer(Seq2SeqTrainer):
 
 
     def get_current_fraction(self, max_subset_size=1000):
-        total_steps = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
-        current_fraction = (self.state.epoch + self.state.global_step / total_steps) / self.args.num_train_epochs
+            """
+            Calculates the current fraction of training progress and returns the subset indices based on the current fraction.
 
-        # Calculate the maximum number of examples to include in the subset
-        max_subset_size = min(max_subset_size, len(self.train_dataset))
+            Args:
+                max_subset_size (int, optional): The maximum number of examples to include in the subset. Defaults to 1000.
 
-        # Calculate the number of examples to include based on the current fraction
-        subset_size = int(current_fraction * len(self.train_dataset))
+            Returns:
+                tuple: A tuple containing the current fraction and the subset indices.
+            """
+            
+            total_steps = len(self.get_train_dataloader()) // self.args.gradient_accumulation_steps
+            current_fraction = (self.state.epoch + self.state.global_step / total_steps) / self.args.num_train_epochs
 
-        # Ensure the subset size does not exceed the maximum
-        subset_size = min(subset_size, max_subset_size)
+            # Calculate the maximum number of examples to include in the subset
+            max_subset_size = min(max_subset_size, len(self.train_dataset))
 
-        # Ensure the subset is capped at the end (most recent examples)
-        subset_start = len(self.train_dataset) - subset_size
-        subset_indices = list(range(subset_start, len(self.train_dataset)))
+            # Calculate the number of examples to include based on the current fraction
+            subset_size = int(current_fraction * len(self.train_dataset))
 
-        return current_fraction, subset_indices
+            # Ensure the subset size does not exceed the maximum
+            subset_size = min(subset_size, max_subset_size)
+
+            # Ensure the subset is capped at the end (most recent examples)
+            subset_start = len(self.train_dataset) - subset_size
+            subset_indices = list(range(subset_start, len(self.train_dataset)))
+
+            return current_fraction, subset_indices
 
 
     def evaluate(
@@ -121,6 +171,19 @@ class CustomTrainer(Seq2SeqTrainer):
         metric_key_prefix="eval",
         subset_fraction=None
     ):
+        """
+        Evaluate the model on the given evaluation dataset.
+
+        Args:
+            eval_dataset (Dataset, optional): The evaluation dataset. Defaults to None.
+            ignore_keys (List[str], optional): List of keys to ignore during evaluation. Defaults to None.
+            metric_key_prefix (str, optional): Prefix for metric keys. Defaults to "eval".
+            subset_fraction (float, optional): Fraction of the dataset to evaluate. Defaults to None.
+
+        Returns:
+            Dict[str, float]: Dictionary of evaluation metrics.
+        """
+
         if subset_fraction is not None:
             total_samples = len(self.train_dataset)
             subset_size = int(subset_fraction * total_samples)
@@ -138,6 +201,19 @@ class CustomTrainer(Seq2SeqTrainer):
         )
 
     def create_subset(self, eval_dataset, subset_indices):
+        """
+        Creates a subset of the given evaluation dataset using the provided indices.
+
+        Args:
+            eval_dataset (Union[dict, Any]): The evaluation dataset. It can be a dictionary of datasets or any other type of dataset.
+            subset_indices (List[int]): The indices of the subset to be created.
+
+        Returns:
+            Union[dict, Any]: The subset of the evaluation dataset.
+
+        Raises:
+            ValueError: If the dataset type is not supported, implement create_subset for your dataset type.
+        """
         if isinstance(eval_dataset, dict):
             # Create a subset for each dataset in the dictionary
             subset_dict = {}

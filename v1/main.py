@@ -55,14 +55,16 @@ if __name__ == "__main__":
     # create_modified_dataset(['test_r1'], amount_training_examples=100, path='data/')
     lr = 3e-4
     lr_str = str(lr)
+    split_ratio = (0.5, 0.5)
+    split_ratio_str = str(split_ratio)
     result_dir = "results/"
-    logging_path =  result_dir + "t5-base-logs-split-loss" + lr_str + "/"
+    logging_path =  result_dir + "t5-base-logs-split-loss_" + lr_str + "_" + split_ratio_str + "/"
     logging_path_labels_only = result_dir + "t5-base-logs-labels-only" + lr_str + "/"
 
     args = Seq2SeqTrainingArguments(
                 predict_with_generate=True,
                 evaluation_strategy="steps",
-                eval_steps=50,
+                eval_steps=500,
                 per_device_train_batch_size=train_batch_size,
                 per_device_eval_batch_size=eval_batch_size,
                 num_train_epochs=5,
@@ -78,7 +80,7 @@ if __name__ == "__main__":
         training_args=args,
         path_custom_logs=logging_path,
         split_loss=True,
-        ratio=(0.5, 0.5)
+        ratio=split_ratio
     )
     model.run(
         dataset_name="modified_anli", 
