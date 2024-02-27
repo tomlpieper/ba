@@ -40,4 +40,7 @@ results/t5-base-logs-split-loss_0.0003_(0.5, 0.5)/t5-small
 results/t5-small-logs-split-loss_0.0003_(0.25, 0.75)/t5-small
 results/t5-small-logs-split-loss_0.0003_(0.25, 0.75)/outputs
 
+results/t5-small-logs-split-loss_0.0003_(0.75, 0.25)/outputs
+results/t5-small-logs-split-loss_0.0003_(0.75, 0.25)/t5-small
+
 

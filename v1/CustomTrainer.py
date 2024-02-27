@@ -120,6 +120,7 @@ class CustomTrainer(Seq2SeqTrainer):
             rest_tokens_loss = loss_fn(rest_tokens_logits.reshape(-1, rest_tokens_logits.size(-1)), rest_tokens_labels.reshape(-1))
 
             # Combine the two losses, giving them equal weight
+            # print(self.ratio)
             loss = self.ratio[0] * first_token_loss + self.ratio[1] * rest_tokens_loss
             
         else:
