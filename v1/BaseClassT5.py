@@ -226,8 +226,9 @@ class BaseClassT5:
 
         for pred, ref in zip(preds, refs):
             if " Rationale: " in pred:
-                pred_label, pred_rationale = pred.split(" Rationale: ")
-                ref_label, ref_rationale = ref.split(" Rationale: ")
+
+                pred_label, pred_rationale = pred.split(" Rationale: ", 1)
+                ref_label, ref_rationale = ref.split(" Rationale: ", 1)
 
                 label_accuracy.append(int(pred_label.strip() == ref_label.strip()))
                 rationale_scores.append(sentence_bleu([ref_rationale.strip().split()], pred_rationale.strip().split()))
