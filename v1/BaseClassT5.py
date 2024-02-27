@@ -3,7 +3,18 @@ warnings.simplefilter("ignore", UserWarning)
 from datasets import load_dataset, Dataset
 import pandas as pd
 import numpy as np
-from transformers import T5Tokenizer, T5ForConditionalGeneration, default_data_collator, Seq2SeqTrainingArguments, Seq2SeqTrainer, TrainerCallback, AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import (
+    T5Tokenizer, 
+    T5ForConditionalGeneration, 
+    default_data_collator, 
+    Seq2SeqTrainingArguments, 
+    Seq2SeqTrainer, 
+    TrainerCallback, 
+    AutoModelForSeq2SeqLM, 
+    AutoTokenizer, 
+    EarlyStoppingCallback
+    )
+    
 from loguru import logger
 import random
 import json
@@ -23,7 +34,16 @@ import numpy as np
 
 class BaseClassT5:   
     
-    def __init__(self, model_name: str = "t5-base", training_args: Seq2SeqTrainingArguments = None, path_custom_logs: str = "results", baseline_model: bool = False, path_model_weights: str = 'results', flan: bool = False, split_loss: bool = False, ratio: tuple = (0.5,0.5) ) -> None:
+    def __init__(self, 
+        model_name: str = "t5-base", 
+        training_args: Seq2SeqTrainingArguments = None, 
+        path_custom_logs: str = "results", 
+        baseline_model: bool = False, 
+        path_model_weights: str = 'results', 
+        flan: bool = False, 
+        split_loss: bool = False, 
+        ratio: tuple = (0.5,0.5) 
+        ) -> None:
             """
             Initializes an instance of the BaseClassT5.
 
@@ -258,7 +278,7 @@ class BaseClassT5:
     
 
 
-    def train(self) -> None:
+    def train(self, es: bool) -> None:
         """
         Train the T5 model.
         """
@@ -282,6 +302,8 @@ class BaseClassT5:
                 # callbacks=[MyCallback]
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
+            if es:
+                self.trianer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
 
             train_result = self.trainer.train()
             metrics = train_result.metrics 
@@ -306,7 +328,7 @@ class BaseClassT5:
 
 
 
-    def run(self, dataset_name: str, splits:[], path_training_data: str, path_trained_model: str, final_model_name: str) -> None:
+    def run(self, dataset_name: str, splits:[], path_training_data: str, path_trained_model: str, final_model_name: str, early_stop: bool = True) -> None:
         """
         Run the T5 model.
         """
@@ -315,7 +337,7 @@ class BaseClassT5:
             try:
                 self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
                 self.prepare_training()
-                self.train()
+                self.train(early_stop)
                 logger.success("Successfully ran T5 model.")
                 self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)
 
@@ -329,7 +351,7 @@ class BaseClassT5:
             try:
                 self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
                 logger.debug(self.train_split[0])
-                self.train()
+                self.train(early_stop)
                 logger.success("Successfully ran T5 model.")
                 self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
