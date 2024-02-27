@@ -17,6 +17,7 @@ class CustomCallback(TrainerCallback):
         self._trainer = trainer
         self._evaluated = False
         self.custom_logs_path = custom_logs_path
+        os.makedirs(custom_logs_path, exist_ok=True)
 
     def on_train_begin(self, args, state, control, **kwargs):
         logger.info("Starting training")

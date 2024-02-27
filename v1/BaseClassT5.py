@@ -331,7 +331,7 @@ class BaseClassT5:
                 logger.debug(self.train_split[0])
                 self.train()
                 logger.success("Successfully ran T5 model.")
-                self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)
+                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
             except Exception as e:
                 logger.exception(f"Error running T5 model: {e}")
