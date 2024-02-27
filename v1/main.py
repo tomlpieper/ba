@@ -58,22 +58,28 @@ if __name__ == "__main__":
     # split_ratio = (0.25, 0.75)
     split_ratio = (0.75, 0.25)
     split_ratio_str = str(split_ratio)
-    result_dir = "results/"
-    logging_path =  result_dir + "t5-small-logs-split-loss_" + lr_str + "_" + split_ratio_str + "/"
-    logging_path_labels_only = result_dir + "t5-small-logs-labels-only" + lr_str + "/"
+
+    logging_dir = "logs/"
+    weights_dir = "results/"
+
+    weights_path = weights_dir + "t5-small-weights/" + lr_str + "/" + split_ratio_str + "/"
+    weights_path_labels_only = weights_dir + "t5-small-weights-labels-only/" + lr_str + "/"
+
+    logging_path =  logging_dir + "t5-small-logs-split-loss_" + lr_str + "_" + split_ratio_str + "/"
+    logging_path_labels_only = logging_dir + "t5-small-logs-labels-only" + lr_str + "/"
 
     args = Seq2SeqTrainingArguments(
                 predict_with_generate=True,
                 evaluation_strategy="steps",
-                eval_steps=500,
+                eval_steps=5,
                 per_device_train_batch_size=train_batch_size,
                 per_device_eval_batch_size=eval_batch_size,
                 num_train_epochs=5,
                 learning_rate=lr,
-                output_dir= logging_path + "outputs",
+                output_dir= weights_path + "outputs",
                 fp16=use_cuda,
-                logging_dir=logging_path + "logs",
-                logging_steps=500
+                logging_dir=weights_path + "logs",
+                logging_steps=5
                 # gradient_accumulation_steps=2
              # remove_unused_columns=False
             )
@@ -81,6 +87,7 @@ if __name__ == "__main__":
         model_name="t5-small",
         training_args=args,
         path_custom_logs=logging_path,
+        path_model_weights=weights_path,
         split_loss=True,
         ratio=split_ratio
     )
@@ -89,7 +96,7 @@ if __name__ == "__main__":
         splits=splits[:3],
         path_training_data="v1/full_r1/",
         # path_training_data="v1/data/",
-        path_trained_model=logging_path,
+        path_trained_model=weights_path,
         final_model_name="t5-small"
     )
     
