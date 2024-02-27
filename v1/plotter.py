@@ -35,9 +35,9 @@ class TrainingMetricsPlotter:
             self.plot_metrics(prefix, save_path=save_path)
 
 # Example usage
-json_file_path = '/Users/tompieper/code_3/results/t5-small-logs-labels-only0.0003/eval_metrics.json'
+json_file_path = '/Users/tompieper/code_3/results/t5-base-logs-split-loss_0.0003_(0.5, 0.5)/eval_metrics.json'
 plotter = TrainingMetricsPlotter(json_file_path)
-path = "images_lr_0.0003_labels/"
+path = "images_lr_0.0003_split_loss/"
 os.makedirs(path, exist_ok=True)
 
 # # Save individual metrics as PNG with legend
@@ -49,10 +49,10 @@ os.makedirs(path, exist_ok=True)
 # plotter.plot_metrics('train_f1_score', save_path=path + 'train_f1_score_plot.png')
 
 # For labels only
-plotter.plot_metrics('eval_exact_match_accuracy', save_path=path + 'eval_exact_match_score.png')
-plotter.plot_metrics('train_exact_match_accuracy', save_path=path + 'train_exact_match_score.png')
-# plotter.plot_metrics('eval_label_accuracy', save_path=path + 'eval_label_accuracy.png')
-# plotter.plot_metrics('train_label_accuracy', save_path=path + 'train_label_accuracy.png')
+# plotter.plot_metrics('eval_exact_match_accuracy', save_path=path + 'eval_exact_match_score.png')
+# plotter.plot_metrics('train_exact_match_accuracy', save_path=path + 'train_exact_match_score.png')
+plotter.plot_metrics('eval_label_accuracy', save_path=path + 'eval_label_accuracy.png')
+plotter.plot_metrics('train_label_accuracy', save_path=path + 'train_label_accuracy.png')
 
 
 # Save multiple metrics as one PNG with legend
