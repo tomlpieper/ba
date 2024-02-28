@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     args = Seq2SeqTrainingArguments(
                 predict_with_generate=True,
-                generation_max_length=100,
+                generation_max_length=400,
                 evaluation_strategy="steps",
                 eval_steps=500,
                 save_steps=1000,
@@ -82,9 +82,9 @@ if __name__ == "__main__":
                 output_dir= weights_path + "outputs",
                 fp16=use_cuda,
                 logging_dir=weights_path + "logs",
-                logging_steps=500,
+                logging_steps=100,
                 load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
-                metric_for_best_model='loss',
+                metric_for_best_model='label_accuracy',
                 # gradient_accumulation_steps=2
              # remove_unused_columns=False
             )

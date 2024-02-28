@@ -258,6 +258,8 @@ class BaseClassT5:
 
         for pred, ref in zip(preds, refs):
             if " Rationale: " in pred:
+                # print(pred)
+                # print(ref)
                 pred_label, pred_rationale = pred.split(" Rationale: ", 1)
                 ref_label, ref_rationale = ref.split(" Rationale: ", 1)
 
@@ -314,7 +316,7 @@ class BaseClassT5:
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
             if es:
-                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
+                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=3))
 
             train_result = self.trainer.train()
             metrics = train_result.metrics 
