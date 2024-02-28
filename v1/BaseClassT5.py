@@ -233,8 +233,19 @@ class BaseClassT5:
     def compute_metrics(self, eval_prediction):
         predictions = eval_prediction.predictions
         label_ids = eval_prediction.label_ids
-        preds = [self.tokenizer.decode(pred, skip_special_tokens=True) for pred in predictions]
-        refs = [self.tokenizer.decode(label, skip_special_tokens=True) for label in label_ids]
+
+        # Adjust decoding process to exclude -100 token IDs
+        preds = []
+        for pred in predictions:
+            filtered_pred = [p for p in pred if p != -100]
+            decoded_pred = self.tokenizer.decode(filtered_pred, skip_special_tokens=True)
+            preds.append(decoded_pred)
+
+        refs = []
+        for label in label_ids:
+            filtered_label = [l for l in label if l != -100]
+            decoded_label = self.tokenizer.decode(filtered_label, skip_special_tokens=True)
+            refs.append(decoded_label)
 
         label_accuracy = []
         rationale_scores = []
@@ -243,12 +254,10 @@ class BaseClassT5:
         recall_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
         f1_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
 
-        exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
+        # exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
 
         for pred, ref in zip(preds, refs):
             if " Rationale: " in pred:
-                # print("Pred: ", pred)
-                # print("Ref: ", ref)
 
                 pred_label, pred_rationale = pred.split(" Rationale: ", 1)
                 ref_label, ref_rationale = ref.split(" Rationale: ", 1)
@@ -277,6 +286,7 @@ class BaseClassT5:
         }
 
         return metrics
+
     
 
 
@@ -306,6 +316,7 @@ class BaseClassT5:
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
             if es:
                 self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
+
             train_result = self.trainer.train()
             metrics = train_result.metrics 
             logger.success("Successfully trained T5 model.")
