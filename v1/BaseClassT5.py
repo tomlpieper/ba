@@ -247,8 +247,8 @@ class BaseClassT5:
 
         for pred, ref in zip(preds, refs):
             if " Rationale: " in pred:
-                print("Pred: ", pred)
-                print("Ref: ", ref)
+                # print("Pred: ", pred)
+                # print("Ref: ", ref)
 
                 pred_label, pred_rationale = pred.split(" Rationale: ", 1)
                 ref_label, ref_rationale = ref.split(" Rationale: ", 1)
@@ -306,14 +306,23 @@ class BaseClassT5:
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
             if es:
                 self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
-
             train_result = self.trainer.train()
             metrics = train_result.metrics 
             logger.success("Successfully trained T5 model.")
         except Exception as e:
             logger.exception(f"Error training T5 model: {e}")
 
-
+    def test(self) -> None:
+        """
+        Test the T5 model.
+        """
+        try:
+            logger.debug("Testing T5 model.")
+            results = self.trainer.evaluate(self.test_split, metric_key_prefix="test")
+            logger.success(f"Test results: {results}")
+            self.trainer.state.save_to_json(self.path_custom_logs + "test_metrics.json")
+        except Exception as e:
+            logger.exception(f"Error testing T5 model: {e}")
 
 
     def save_model_and_tokenizer(self, path: str, model_name: str = "model") -> None:
@@ -340,6 +349,8 @@ class BaseClassT5:
                 self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
                 self.prepare_training()
                 self.train(early_stop)
+                logger.success("Successfully trained T5 model.")
+                self.test()
                 logger.success("Successfully ran T5 model.")
                 self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
