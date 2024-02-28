@@ -70,6 +70,7 @@ if __name__ == "__main__":
 
     args = Seq2SeqTrainingArguments(
                 predict_with_generate=True,
+                generation_max_length=400,
                 evaluation_strategy="steps",
                 eval_steps=5,
                 save_steps=5,

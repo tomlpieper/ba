@@ -22,7 +22,6 @@ class CustomTrainer(Seq2SeqTrainer):
         """
         self.split_loss = kwargs.pop("split_loss", False)
         self.ratio: tuple = kwargs.pop("ratio", (0.5,0.5))
-        self.max_length = kwargs.pop("max_length", 400)
         super().__init__(*args, **kwargs)
 
 
@@ -159,8 +158,7 @@ class CustomTrainer(Seq2SeqTrainer):
         return super().evaluate(
             eval_dataset=eval_dataset,
             ignore_keys=ignore_keys,
-            metric_key_prefix=metric_key_prefix,
-            max_length=self.max_length
+            metric_key_prefix=metric_key_prefix
         )
 
     def create_subset(self, eval_dataset, subset_indices):
