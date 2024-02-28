@@ -331,7 +331,7 @@ class BaseClassT5:
             logger.debug("Testing T5 model.")
             results = self.trainer.evaluate(self.test_split, metric_key_prefix="test")
             logger.success(f"Test results: {results}")
-            self.trainer.state.save_to_json(self.path_custom_logs + "test_metrics.json")
+            self.trainer.state.save_to_json(self.path_custom_logs + "metrics.json")
         except Exception as e:
             logger.exception(f"Error testing T5 model: {e}")
 
