@@ -39,6 +39,7 @@ class BaseClassT5:
         training_args: Seq2SeqTrainingArguments = None, 
         path_custom_logs: str = "results", 
         baseline_model: bool = False, 
+        original_ANLI: bool = False,
         path_model_weights: str = 'results', 
         flan: bool = False, 
         split_loss: bool = False, 
@@ -60,6 +61,7 @@ class BaseClassT5:
             self.split_loss = split_loss
             self.ratio = ratio
             self.baseline_model = baseline_model
+            self.original_ANLI = original_ANLI
             self.path_custom_logs = path_custom_logs
             
             # Splits to train model on 
@@ -110,7 +112,7 @@ class BaseClassT5:
 
             # Load datasets
             datasets = load_dataset('json', data_files={
-                "train_r1": f"{path}{train}.json",
+                "splits": f"{path}{train}.json",
                 "test_r1": f"{path}{test}.json",
                 "dev_r1": f"{path}{dev}.json"
             })
@@ -131,9 +133,16 @@ class BaseClassT5:
             lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
             remove_columns=['premise', 'hypothesis'],
         )
+        # If the dataset is the original ANLI dataset, concatenate the label and reason for generating the original rationale
+        if self.original_ANLI:
+            datasets = datasets.map(
+                lambda example: {'label': example['label'] + ' Explanation: ' + example['reason']},
+                remove_columns=['label', 'reason'],
+            )
         processed_dataset = datasets.map(
         function=self.preprocess_data,
         batched=True)
+
         self.train_split = processed_dataset['train_r1']
         self.test_split = processed_dataset['test_r1']
         self.dev_split = processed_dataset['dev_r1']
@@ -178,10 +187,22 @@ class BaseClassT5:
     def preprocess_data(self,inputs):
         # print("Inputs: {}".format(inputs))
         model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
-        # print("Model Inputs: {}".format(model_inputs))
+
+
         labels = self.tokenizer([str(label) for label in inputs['label']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
         model_inputs["labels"] = labels["input_ids"]
         # print(f"Model Inputs: {model_inputs}")
+
+        # Fixing the decoder_input_ids for -100 due to max length
+
+        decoder_input_ids = encoded_targets['input_ids']
+        # Shift the `decoder_input_ids` to the right and add the start token at the beginning
+        # Note: T5 uses the pad token as the start token for decoder_input_ids
+        decoder_start_token_id = self.tokenizer.pad_token_id
+        decoder_input_ids = torch.cat([torch.full((decoder_input_ids.shape[0], 1), decoder_start_token_id, dtype=torch.long), decoder_input_ids[:, :-1]], dim=1)
+        inputs['decoder_input_ids'] = decoder_input_ids
+
+
         return model_inputs
 
 
@@ -255,27 +276,49 @@ class BaseClassT5:
         f1_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
 
         # exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
+        if self.original_ANLI:
+            for pred, ref in zip(preds, refs):
+                if " Explanation: " in pred:
+                    pred_label, pred_rationale = pred.split(" Explanation: ", 1)
+                    ref_label, ref_rationale = ref.split(" Explanation: ", 1)
 
-        for pred, ref in zip(preds, refs):
-            if " Rationale: " in pred:
+                    label_accuracy.append(int(pred_label.strip() == ref_label.strip()))
+                    rationale_scores.append(sentence_bleu([ref_rationale.strip().split()], pred_rationale.strip().split()))
 
-                pred_label, pred_rationale = pred.split(" Rationale: ", 1)
-                ref_label, ref_rationale = ref.split(" Rationale: ", 1)
+                    for label in ['Entailment', 'Neutral', 'Contradiction']:
+                        pred_label_binary = int(pred_label.split()[-1] == label)
+                        ref_label_binary = int(ref_label.split()[-1] == label)
 
-                label_accuracy.append(int(pred_label.strip() == ref_label.strip()))
-                rationale_scores.append(sentence_bleu([ref_rationale.strip().split()], pred_rationale.strip().split()))
+                        precision = precision_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+                        recall = recall_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+                        f1 = f1_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
 
-                for label in ['Entailment', 'Neutral', 'Contradiction']:
-                    pred_label_binary = int(pred_label.split()[-1] == label)
-                    ref_label_binary = int(ref_label.split()[-1] == label)
+                        precision_scores[label].append(precision)
+                        recall_scores[label].append(recall)
+                        f1_scores[label].append(f1)
 
-                    precision = precision_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
-                    recall = recall_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
-                    f1 = f1_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+                        
+        else:
+            for pred, ref in zip(preds, refs):
+                if " Rationale: " in pred:
 
-                    precision_scores[label].append(precision)
-                    recall_scores[label].append(recall)
-                    f1_scores[label].append(f1)
+                    pred_label, pred_rationale = pred.split(" Rationale: ", 1)
+                    ref_label, ref_rationale = ref.split(" Rationale: ", 1)
+
+                    label_accuracy.append(int(pred_label.strip() == ref_label.strip()))
+                    rationale_scores.append(sentence_bleu([ref_rationale.strip().split()], pred_rationale.strip().split()))
+
+                    for label in ['Entailment', 'Neutral', 'Contradiction']:
+                        pred_label_binary = int(pred_label.split()[-1] == label)
+                        ref_label_binary = int(ref_label.split()[-1] == label)
+
+                        precision = precision_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+                        recall = recall_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+                        f1 = f1_score([ref_label_binary], [pred_label_binary], average='binary', zero_division=0)
+
+                        precision_scores[label].append(precision)
+                        recall_scores[label].append(recall)
+                        f1_scores[label].append(f1)
 
         metrics = {
             "label_accuracy": np.mean(label_accuracy) if label_accuracy else 0,
@@ -297,7 +340,7 @@ class BaseClassT5:
         try:
             all_metrics = {"epoch": [], "exact_match_accuracy": [], "label_accuracy": [], "rationale_bleu_score": [], "precision": [], "recall": [], "f1_score": []}
 
-            if self.baseline_model:
+            if self.baseline_model :
                 metrics = self.compute_exact_match
             else:
                 metrics = self.compute_metrics
@@ -360,12 +403,23 @@ class BaseClassT5:
                 self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
                 self.prepare_training()
                 self.train(early_stop)
-                logger.success("Successfully trained T5 model.")
                 self.test()
                 logger.success("Successfully ran T5 model.")
                 self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
 
+            except Exception as e:
+                logger.exception(f"Error running T5 model: {e}")
+
+
+        elif self.original_ANLI:
+            logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
+            try:
+                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                self.train(early_stop)
+                logger.success("Successfully ran T5 model.")
+                self.test()
+                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
             except Exception as e:
                 logger.exception(f"Error running T5 model: {e}")
 

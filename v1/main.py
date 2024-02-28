@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 logging_dir=weights_path + "logs",
                 logging_steps=100,
                 load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
-                metric_for_best_model='label_accuracy',
+                metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
                 # gradient_accumulation_steps=2
              # remove_unused_columns=False
             )
@@ -93,17 +93,26 @@ if __name__ == "__main__":
         training_args=args,
         path_custom_logs=logging_path,
         path_model_weights=weights_path,
+        original_ANLI=True,
         split_loss=True,
         ratio=split_ratio
     )
     model.run(
-        dataset_name="modified_anli", 
+        dataset_name="anli", 
         splits=splits[:3],
         path_training_data="v1/full_r1/",
         # path_training_data="v1/data/",
         path_trained_model=weights_path,
         final_model_name="t5-small"
     )
+    # model.run(
+    #     dataset_name="modified_anli", 
+    #     splits=splits[:3],
+    #     path_training_data="v1/full_r1/",
+    #     # path_training_data="v1/data/",
+    #     path_trained_model=weights_path,
+    #     final_model_name="t5-small"
+    # )
     
     
     # args_labels_only = Seq2SeqTrainingArguments(
