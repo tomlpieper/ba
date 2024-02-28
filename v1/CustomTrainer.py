@@ -6,26 +6,6 @@ from transformers.modeling_utils import PreTrainedModel, load_sharded_checkpoint
 from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES, MODEL_MAPPING_NAMES
 
 class CustomTrainer(Seq2SeqTrainer):
-    """
-    A custom trainer class for sequence-to-sequence models.
-
-    Args:
-        *args: Variable length argument list.
-        **kwargs: Arbitrary keyword arguments.
-            split_loss (bool): Flag indicating whether to split the loss.
-            ratio (tuple): A tuple representing the ratio for splitting the loss.
-
-    Attributes:
-        split_loss (bool): Flag indicating whether to split the loss.
-        ratio (tuple): A tuple representing the ratio for splitting the loss.
-
-    Methods:
-        __init__: Initialize the CustomTrainer object.
-        compute_loss: Computes the loss for the given model and inputs.
-        get_current_fraction: Calculates the current fraction of training progress and returns the subset indices based on the current fraction.
-        evaluate: Evaluates the model on the evaluation dataset.
-        create_subset: Creates a subset of the dataset using the provided indices.
-    """
 
     def __init__(self, *args, **kwargs):
         """
@@ -42,26 +22,7 @@ class CustomTrainer(Seq2SeqTrainer):
         """
         self.split_loss = kwargs.pop("split_loss", False)
         self.ratio: tuple = kwargs.pop("ratio", (0.5,0.5))
-        super().__init__(*args, **kwargs)
-
-    # Rest of the code...
-class CustomTrainer(Seq2SeqTrainer):
-
-    def __init__(self, *args, **kwargs):
-        """
-        Initialize the CustomTrainer object.
-
-        Args:
-            *args: Variable length argument list.
-            **kwargs: Arbitrary keyword arguments.
-                split_loss (bool): Flag indicating whether to split the loss.
-                ratio (tuple): A tuple representing the ratio for splitting the loss.
-
-        Returns:
-            None
-        """
-        self.split_loss = kwargs.pop("split_loss", False)
-        self.ratio: tuple = kwargs.pop("ratio", (0.5,0.5))
+        self.max_length = kwargs.pop("max_length", 400)
         super().__init__(*args, **kwargs)
 
 
@@ -198,7 +159,8 @@ class CustomTrainer(Seq2SeqTrainer):
         return super().evaluate(
             eval_dataset=eval_dataset,
             ignore_keys=ignore_keys,
-            metric_key_prefix=metric_key_prefix
+            metric_key_prefix=metric_key_prefix,
+            max_length=self.max_length
         )
 
     def create_subset(self, eval_dataset, subset_indices):

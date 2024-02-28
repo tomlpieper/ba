@@ -247,6 +247,8 @@ class BaseClassT5:
 
         for pred, ref in zip(preds, refs):
             if " Rationale: " in pred:
+                print("Pred: ", pred)
+                print("Ref: ", ref)
 
                 pred_label, pred_rationale = pred.split(" Rationale: ", 1)
                 ref_label, ref_rationale = ref.split(" Rationale: ", 1)
@@ -303,7 +305,7 @@ class BaseClassT5:
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
             if es:
-                self.trianer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
+                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
 
             train_result = self.trainer.train()
             metrics = train_result.metrics 
@@ -339,7 +341,7 @@ class BaseClassT5:
                 self.prepare_training()
                 self.train(early_stop)
                 logger.success("Successfully ran T5 model.")
-                self.save_model_and_tokenizer(path=self.path_custom_logs, model_name=final_model_name)
+                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
 
             except Exception as e:

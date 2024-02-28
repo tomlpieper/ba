@@ -71,8 +71,8 @@ if __name__ == "__main__":
     args = Seq2SeqTrainingArguments(
                 predict_with_generate=True,
                 evaluation_strategy="steps",
-                eval_steps=500,
-                save_steps=1000,
+                eval_steps=5,
+                save_steps=5,
                 warmup_steps=500,
                 per_device_train_batch_size=train_batch_size,
                 per_device_eval_batch_size=eval_batch_size,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                 output_dir= weights_path + "outputs",
                 fp16=use_cuda,
                 logging_dir=weights_path + "logs",
-                logging_steps=500,
+                logging_steps=5,
                 load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
                 metric_for_best_model='loss',
                 # gradient_accumulation_steps=2
