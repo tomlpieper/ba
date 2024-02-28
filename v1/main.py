@@ -62,10 +62,10 @@ if __name__ == "__main__":
     logging_dir = "logs/"
     weights_dir = "results/"
 
-    weights_path = weights_dir + "t5-small-weights/" + lr_str + "/" + split_ratio_str + "/"
+    weights_path = weights_dir + "t5-small-weights-original/" + lr_str + "/" + split_ratio_str + "/"
     weights_path_labels_only = weights_dir + "t5-small-weights-labels-only/" + lr_str + "/"
 
-    logging_path =  logging_dir + "t5-small-logs-split-loss_" + lr_str + "_" + split_ratio_str + "/"
+    logging_path =  logging_dir + "t5-small-logs-split-loss-/" + lr_str + "_" + split_ratio_str + "/"
     logging_path_labels_only = logging_dir + "t5-small-logs-labels-only" + lr_str + "/"
 
     args = Seq2SeqTrainingArguments(

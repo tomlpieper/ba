@@ -129,16 +129,45 @@ class BaseClassT5:
 
     def load_and_process_dataset(self, dataset_name: str, splits: [str]):
         dataset = load_dataset(dataset_name)
+        # print dataset info for column reason
+        # print(dataset['train_r1'].info.description)
         datasets = dataset.map(
             lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
             remove_columns=['premise', 'hypothesis'],
         )
+
+         # Conditional logic for label to string conversion with three different cases
+        # def label_to_string(example):
+        #     if example['label'] == 0:  # Assuming 0 is one of the label values
+        #         label_str = 'entailment'
+        #     elif example['label'] == 1:  # Assuming 1 is another label value
+        #         label_str = 'neutral'
+        #     else:  # Default case for any other label value
+        #         label_str = 'contradiction'
+        #     return {'label': label_str}
+        def label_to_string(label):
+            # Define your mapping from numerical label to string
+            label_map = {0: "Entailment", 1: "Neutral", 2: "Contradiction"}
+            # Return the corresponding string label
+            return label_map.get(label, "unknown")
         # If the dataset is the original ANLI dataset, concatenate the label and reason for generating the original rationale
         if self.original_ANLI:
-            datasets = datasets.map(
-                lambda example: {'label': example['label'] + ' Explanation: ' + example['reason']},
-                remove_columns=['label', 'reason'],
+
+
+            datasets = datasets.filter(
+                lambda example: example['reason'] != '' 
             )
+
+            datasets = datasets.map(
+                lambda example : {'label2' : label_to_string(example['label'])},
+                remove_columns=['label']
+            )
+            datasets = datasets.map(
+                lambda example: {'target': example['label2'] + ' Explanation: ' + example['reason']},
+                remove_columns=['label2', 'reason'],
+            )
+
+
         processed_dataset = datasets.map(
         function=self.preprocess_data,
         batched=True)
@@ -146,6 +175,8 @@ class BaseClassT5:
         self.train_split = processed_dataset['train_r1']
         self.test_split = processed_dataset['test_r1']
         self.dev_split = processed_dataset['dev_r1']
+
+
 
 
     def concat_inputs_and_targets(self, dataset: Dataset) -> Dataset:
@@ -184,27 +215,51 @@ class BaseClassT5:
         return model_inputs
 
 
-    def preprocess_data(self,inputs):
-        # print("Inputs: {}".format(inputs))
-        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
+    # def preprocess_data(self,inputs):
+    #     # print("Inputs: {}".format(inputs))
+    #     model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
 
 
-        labels = self.tokenizer([str(label) for label in inputs['label']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
-        model_inputs["labels"] = labels["input_ids"]
-        # print(f"Model Inputs: {model_inputs}")
+    #     encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
+    #     model_inputs["labels"] = encoded_targets["input_ids"]
+    #     # print(f"Model Inputs: {model_inputs}")
 
-        # Fixing the decoder_input_ids for -100 due to max length
+    #     # Fixing the decoder_input_ids for -100 due to max length
 
-        decoder_input_ids = encoded_targets['input_ids']
-        # Shift the `decoder_input_ids` to the right and add the start token at the beginning
-        # Note: T5 uses the pad token as the start token for decoder_input_ids
+    #     decoder_input_ids = encoded_targets['input_ids']
+    #     # Shift the `decoder_input_ids` to the right and add the start token at the beginning
+    #     # Note: T5 uses the pad token as the start token for decoder_input_ids
+    #     decoder_start_token_id = self.tokenizer.pad_token_id
+    #     decoder_input_ids = torch.cat([torch.full((decoder_input_ids.shape[0], 1), decoder_start_token_id, dtype=torch.long), decoder_input_ids[:, :-1]], dim=1)
+    #     inputs['decoder_input_ids'] = decoder_input_ids
+
+
+    #     return model_inputs
+    def preprocess_data(self, inputs):
+        # Tokenize the inputs and targets
+        model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True, padding='max_length')
+        encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True, padding='max_length')
+        
+        # Assign the tokenized targets as labels
+        model_inputs["labels"] = encoded_targets["input_ids"]
+        
+        # Prepare decoder_input_ids
+        # Convert list to tensor
+        decoder_input_ids = torch.tensor(encoded_targets['input_ids'], dtype=torch.long)
+        
+        # T5 uses the pad token as the start token for decoder_input_ids
         decoder_start_token_id = self.tokenizer.pad_token_id
-        decoder_input_ids = torch.cat([torch.full((decoder_input_ids.shape[0], 1), decoder_start_token_id, dtype=torch.long), decoder_input_ids[:, :-1]], dim=1)
-        inputs['decoder_input_ids'] = decoder_input_ids
-
-
+        
+        # Create a tensor of start tokens
+        decoder_start_token_tensor = torch.full((decoder_input_ids.shape[0], 1), decoder_start_token_id, dtype=torch.long)
+        
+        # Concatenate start token tensor with the decoder_input_ids tensor, removing the last token to maintain size
+        decoder_input_ids = torch.cat([decoder_start_token_tensor, decoder_input_ids[:, :-1]], dim=1)
+        
+        # Update inputs with the processed decoder_input_ids
+        model_inputs['decoder_input_ids'] = decoder_input_ids.tolist() # Convert back to list if necessary
+        
         return model_inputs
-
 
 
     def compute_exact_match(self, eval_prediction):
@@ -278,6 +333,10 @@ class BaseClassT5:
         # exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
         if self.original_ANLI:
             for pred, ref in zip(preds, refs):
+
+                print(f"Prediction: {pred}" )
+                print(f"Reference: {ref}" )
+
                 if " Explanation: " in pred:
                     pred_label, pred_rationale = pred.split(" Explanation: ", 1)
                     ref_label, ref_rationale = ref.split(" Explanation: ", 1)
@@ -297,7 +356,7 @@ class BaseClassT5:
                         recall_scores[label].append(recall)
                         f1_scores[label].append(f1)
 
-                        
+
         else:
             for pred, ref in zip(preds, refs):
                 if " Rationale: " in pred:
@@ -397,34 +456,7 @@ class BaseClassT5:
         """
         Run the T5 model.
         """
-        if not self.baseline_model:
-            logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
-            try:
-                self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
-                self.prepare_training()
-                self.train(early_stop)
-                self.test()
-                logger.success("Successfully ran T5 model.")
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-
-
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
-
-
-        elif self.original_ANLI:
-            logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
-            try:
-                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                self.train(early_stop)
-                logger.success("Successfully ran T5 model.")
-                self.test()
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
-
-
-        else:
+        if self.baseline_model:
             logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
             try:
                 self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
@@ -437,3 +469,28 @@ class BaseClassT5:
                 logger.exception(f"Error running T5 model: {e}")
 
 
+        elif self.original_ANLI:
+            logger.debug(f"Running {self.model_name} model on {dataset_name} with rationale output.")
+            try:
+                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                self.train(early_stop)
+                logger.success("Successfully ran T5 model.")
+                self.test()
+                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+            except Exception as e:
+                logger.exception(f"Error running T5 model: {e}")
+
+
+        else:
+            logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
+            try:
+                self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
+                self.prepare_training()
+                self.train(early_stop)
+                self.test()
+                logger.success("Successfully ran T5 model.")
+                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+
+
+            except Exception as e:
+                logger.exception(f"Error running T5 model: {e}")
