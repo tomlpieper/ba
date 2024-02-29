@@ -42,7 +42,7 @@ class CustomTrainer(Seq2SeqTrainer):
         """
         # raise ValueError("Inputs are: ", inputs, "Model is: ", model, "Return outputs is: ", return_outputs)
         if not self.split_loss:
-            raise ValueError("Using standard loss function")
+            # raise ValueError("Using standard loss function")
             return super().compute_loss(model, inputs, return_outputs)
 
         # Compute loss in a split way for the first token and the rest of the sequence
