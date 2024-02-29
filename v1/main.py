@@ -29,9 +29,10 @@ def create_modified_dataset(
 
 
 def run_different_lrs(split_ratios: list, lr: float = 3e-4):
-    for i in split_ratio:
+    for i in split_ratios:
         split_ratio_str = str(i)
         lr_str = str(lr)
+        logging_path = logging_dir + "t5-small-logs-split-loss/" + lr_str + "/" + split_ratio_str + "/"
         weights_path = weights_dir + "t5-small-weights/" + lr_str + "/" + split_ratio_str + "/"
 
         args = Seq2SeqTrainingArguments(
@@ -61,7 +62,7 @@ def run_different_lrs(split_ratios: list, lr: float = 3e-4):
             path_model_weights=weights_path,
             # original_ANLI=True,
             split_loss=True,
-            ratio=j
+            ratio=i
         )
 
         model.run(
@@ -113,7 +114,11 @@ if __name__ == "__main__":
 
 
     run_different_lrs(
-        split_ratios=[(0.25, 0.75),(0.5,0.5), (0.75, 0.25)],
+        split_ratios=[
+            (0.25, 0.75),
+            (0.5,0.5)
+            # (0.75, 0.25)
+            ],
         lr=3e-4
     )
 

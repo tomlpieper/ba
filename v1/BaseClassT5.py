@@ -112,7 +112,7 @@ class BaseClassT5:
 
             # Load datasets
             datasets = load_dataset('json', data_files={
-                "splits": f"{path}{train}.json",
+                "train_r1": f"{path}{train}.json",
                 "test_r1": f"{path}{test}.json",
                 "dev_r1": f"{path}{dev}.json"
             })
