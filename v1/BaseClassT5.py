@@ -38,8 +38,6 @@ class BaseClassT5:
         model_name: str = "t5-base", 
         training_args: Seq2SeqTrainingArguments = None, 
         path_custom_logs: str = "results", 
-        # baseline_model: bool = False, 
-        # original_ANLI: bool = False,
         model_type: int = 0,
         path_model_weights: str = 'results', 
         ratio: tuple = (0.5,0.5) 
@@ -48,15 +46,12 @@ class BaseClassT5:
             Initialize the BaseClassT5 class.
 
             Args:
-                model_name (str): The name of the T5 model to use.
-                training_args (Seq2SeqTrainingArguments): The training arguments for the T5 model.
-                path_custom_logs (str): The path to save custom logs.
-                baseline_model (bool): Whether the model is a baseline model or not.
-                original_ANLI (bool): Whether the model is trained on the original ANLI dataset or not.
-                path_model_weights (str): The path to save the model weights.
-                flan (bool): Whether the model is a FLAN model or not.
-                split_loss (bool): Whether to split the loss or not.
-                ratio (tuple): The ratio of the loss to split.
+                model_name (str, optional): The name of the model to use. Defaults to "t5-base".
+                training_args (Seq2SeqTrainingArguments, optional): The training arguments to use. Defaults to None.
+                path_custom_logs (str, optional): The path to save custom logs. Defaults to "results".
+                model_type (int, optional): The type of model to use. Defaults to 0.
+                path_model_weights (str, optional): The path to the model weights. Defaults to 'results'.
+                ratio (tuple, optional): The ratio for splitting the loss. Defaults to (0.5,0.5).
             """
 
             self.tokenizer = T5Tokenizer.from_pretrained(model_name)
@@ -84,13 +79,11 @@ class BaseClassT5:
                 self.training_args = Seq2SeqTrainingArguments(
                     predict_with_generate=True,
                     evaluation_strategy="epoch",
-                    # per_device_train_batch_size=1,
-                    per_device_eval_batch_size=1,
                     num_train_epochs=5,
                     learning_rate=5e-5,
                     output_dir="./t5-base-train",
                     fp16=True
-                 # remove_unused_columns=False
+
                 )
             else:
                 self.training_args = training_args
