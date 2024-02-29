@@ -38,11 +38,10 @@ class BaseClassT5:
         model_name: str = "t5-base", 
         training_args: Seq2SeqTrainingArguments = None, 
         path_custom_logs: str = "results", 
-        baseline_model: bool = False, 
-        original_ANLI: bool = False,
+        # baseline_model: bool = False, 
+        # original_ANLI: bool = False,
+        model_type: int = 0,
         path_model_weights: str = 'results', 
-        flan: bool = False, 
-        split_loss: bool = False, 
         ratio: tuple = (0.5,0.5) 
         ) -> None:
             """
@@ -65,10 +64,11 @@ class BaseClassT5:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model.to(self.device)
             self.model_name = model_name
+            self.model_type = model_type
+            self.split_loss = False if model_type == 2 else True
+                
             self.split_loss = split_loss
             self.ratio = ratio
-            self.baseline_model = baseline_model
-            self.original_ANLI = original_ANLI
             self.path_custom_logs = path_custom_logs
             
             # Splits to train model on 
@@ -162,7 +162,7 @@ class BaseClassT5:
                 return label_map.get(label, "unknown")
 
             # If the dataset is the original ANLI dataset, concatenate the label and reason for generating the original rationale
-            if self.original_ANLI:
+            if self.model_type == 1:
 
 
                 datasets = datasets.filter(
@@ -348,7 +348,7 @@ class BaseClassT5:
         f1_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
 
         # exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
-        if self.original_ANLI:
+        if self.model_type == 1:
             for pred, ref in zip(preds, refs):
 
                 print(f"Prediction: {pred}" )
@@ -416,7 +416,7 @@ class BaseClassT5:
         try:
             all_metrics = {"epoch": [], "exact_match_accuracy": [], "label_accuracy": [], "rationale_bleu_score": [], "precision": [], "recall": [], "f1_score": []}
 
-            if self.baseline_model :
+            if self.model_type == 2:
                 metrics = self.compute_exact_match
             else:
                 metrics = self.compute_metrics
@@ -473,42 +473,40 @@ class BaseClassT5:
         """
         Run the T5 model.
         """
-        if self.baseline_model:
-            logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
-            try:
-                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                logger.debug(self.train_split[0])
-                self.train(early_stop)
-                logger.success("Successfully ran T5 model.")
-                self.test()
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
+        match self.model_type:
+            case 0:
+                logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
+                try:
+                    self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
+                    self.prepare_training()
+                    self.train(early_stop)
+                    self.test()
+                    logger.success("Successfully ran T5 model.")
+                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
 
-        elif self.original_ANLI:
-            logger.debug(f"Running {self.model_name} model on {dataset_name} with rationale output.")
-            try:
-                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                self.train(early_stop)
-                logger.success("Successfully ran T5 model.")
-                self.test()
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
+                except Exception as e:
+                    logger.exception(f"Error running T5 model: {e}")
+            case 1:
+                logger.debug(f"Running {self.model_name} model on {dataset_name} with rationale output.")
+                try:
+                    self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                    self.train(early_stop)
+                    logger.success("Successfully ran T5 model.")
+                    self.test()
+                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+                except Exception as e:
+                    logger.exception(f"Error running T5 model: {e}")
+            case 2:
+                    
+                logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
+                try:
+                    self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                    logger.debug(self.train_split[0])
+                    self.train(early_stop)
+                    logger.success("Successfully ran T5 model.")
+                    self.test()
+                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
-
-        else:
-            logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
-            try:
-                self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
-                self.prepare_training()
-                self.train(early_stop)
-                self.test()
-                logger.success("Successfully ran T5 model.")
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-
-
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
+                except Exception as e:
+                    logger.exception(f"Error running T5 model: {e}")            

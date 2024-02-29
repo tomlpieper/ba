@@ -150,15 +150,14 @@ def run_modified_anli_with_rationale(
         logging_steps=100,
         load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
         metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
-        # gradient_accumulation_steps=2
-        # remove_unused_columns=False
     )
+
     model = BaseClassT5(
         model_name=model_name,
         training_args=args,
         path_custom_logs=logging_path,
         path_model_weights=weights_path,
-        split_loss=True,
+        model_type=0,
         ratio=split_ratio
     )
 
@@ -166,7 +165,6 @@ def run_modified_anli_with_rationale(
         dataset_name="modified_anli", 
         splits=splits,
         path_training_data="v1/full_r1/",
-        # path_training_data="v1/data/",
         path_trained_model=weights_path,
         final_model_name=model_name
     )
@@ -215,16 +213,14 @@ def run_original_anli_with_rationale(
         logging_steps=100,
         load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
         metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
-        # gradient_accumulation_steps=2
-        # remove_unused_columns=False
     )
+    
     model = BaseClassT5(
         model_name=model_name,
         training_args=args,
         path_custom_logs=logging_path,
         path_model_weights=weights_path,
-        original_ANLI=True,
-        split_loss=True,
+        model_type=1,
         ratio=split_ratio
     )
 
@@ -232,7 +228,6 @@ def run_original_anli_with_rationale(
         dataset_name="anli", 
         splits=splits,
         path_training_data="v1/full_r1/",
-        # path_training_data="v1/data/",
         path_trained_model=weights_path,
         final_model_name=model_name
     )
@@ -287,8 +282,7 @@ def run_orignal_anli_without_rationale(
         training_args=args,
         path_custom_logs=logging_path,
         path_model_weights=weights_path,
-        original_ANLI=True,
-        split_loss=False
+        model_type=2
     )
 
     model.run(
@@ -331,3 +325,8 @@ if __name__ == "__main__":
         lr=3e-4
     )
 
+
+model_types = {
+    0: "modified_anli_with_rationale", 
+    1: "original_anli_with_rationale", 
+    2: "orignal_anli_without_rationale"}
