@@ -46,11 +46,18 @@ class BaseClassT5:
         ratio: tuple = (0.5,0.5) 
         ) -> None:
             """
-            Initializes an instance of the BaseClassT5.
+            Initialize the BaseClassT5 class.
 
             Args:
-                model_name (str): The name of the T5 model to be used. Defaults to "t5-base".
-                training_args (Seq2SeqTrainingArguments): The training arguments for the model. Defaults to None.
+                model_name (str): The name of the T5 model to use.
+                training_args (Seq2SeqTrainingArguments): The training arguments for the T5 model.
+                path_custom_logs (str): The path to save custom logs.
+                baseline_model (bool): Whether the model is a baseline model or not.
+                original_ANLI (bool): Whether the model is trained on the original ANLI dataset or not.
+                path_model_weights (str): The path to save the model weights.
+                flan (bool): Whether the model is a FLAN model or not.
+                split_loss (bool): Whether to split the loss or not.
+                ratio (tuple): The ratio of the loss to split.
             """
 
             self.tokenizer = T5Tokenizer.from_pretrained(model_name)
@@ -110,17 +117,19 @@ class BaseClassT5:
             test = f"{dataset_name}_{splits[1]}"
             dev = f"{dataset_name}_{splits[2]}"
 
+            train_split_str, dev_split_str, test_split_str = splits
+
             # Load datasets
             datasets = load_dataset('json', data_files={
-                "splits": f"{path}{train}.json",
-                "test_r1": f"{path}{test}.json",
-                "dev_r1": f"{path}{dev}.json"
+                train_split_str: f"{path}{train}.json",
+                test_split_str: f"{path}{test}.json",
+                dev_split_str: f"{path}{dev}.json"
             })
 
             # Access splits
-            self.train_split = datasets['train_r1']
-            self.test_split = datasets['test_r1']
-            self.dev_split = datasets['dev_r1']
+            self.train_split = datasets[train_split_str]
+            self.test_split = datasets[test_split_str]
+            self.dev_split = datasets[dev_split_str]
 
             logger.success(f"Successfully loaded dataset {dataset_name} from {path}.")
         except FileNotFoundError as e:
@@ -128,61 +137,75 @@ class BaseClassT5:
 
 
     def load_and_process_dataset(self, dataset_name: str, splits: [str]):
-        dataset = load_dataset(dataset_name)
-        # print dataset info for column reason
-        # print(dataset['train_r1'].info.description)
-        datasets = dataset.map(
-            lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
-            remove_columns=['premise', 'hypothesis'],
-        )
+            """
+            Loads and processes a dataset.
 
-         # Conditional logic for label to string conversion with three different cases
-        # def label_to_string(example):
-        #     if example['label'] == 0:  # Assuming 0 is one of the label values
-        #         label_str = 'entailment'
-        #     elif example['label'] == 1:  # Assuming 1 is another label value
-        #         label_str = 'neutral'
-        #     else:  # Default case for any other label value
-        #         label_str = 'contradiction'
-        #     return {'label': label_str}
-        def label_to_string(label):
-            # Define your mapping from numerical label to string
-            label_map = {0: "Entailment", 1: "Neutral", 2: "Contradiction"}
-            # Return the corresponding string label
-            return label_map.get(label, "unknown")
-        # If the dataset is the original ANLI dataset, concatenate the label and reason for generating the original rationale
-        if self.original_ANLI:
+            Args:
+                dataset_name (str): The name of the dataset to load.
+                splits (list[str]): The list of split names to access from the loaded dataset.
 
+            Returns:
+                None
+            """
+            
+            dataset = load_dataset(dataset_name)
 
-            datasets = datasets.filter(
-                lambda example: example['reason'] != '' 
+            datasets = dataset.map(
+                lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
+                remove_columns=['premise', 'hypothesis'],
             )
 
-            datasets = datasets.map(
-                lambda example : {'label2' : label_to_string(example['label'])},
-                remove_columns=['label']
-            )
-            datasets = datasets.map(
-                lambda example: {'target': example['label2'] + ' Explanation: ' + example['reason']},
-                remove_columns=['label2', 'reason'],
-            )
+            def label_to_string(label):
+                # Define your mapping from numerical label to string
+                label_map = {0: "Entailment", 1: "Neutral", 2: "Contradiction"}
+                # Return the corresponding string label
+                return label_map.get(label, "unknown")
+
+            # If the dataset is the original ANLI dataset, concatenate the label and reason for generating the original rationale
+            if self.original_ANLI:
 
 
-        processed_dataset = datasets.map(
-        function=self.preprocess_data,
-        batched=True)
+                datasets = datasets.filter(
+                    lambda example: example['reason'] != '' 
+                )
 
-        self.train_split = processed_dataset['train_r1']
-        self.test_split = processed_dataset['test_r1']
-        self.dev_split = processed_dataset['dev_r1']
+                datasets = datasets.map(
+                    lambda example : {'label2' : label_to_string(example['label'])},
+                    remove_columns=['label']
+                )
+                datasets = datasets.map(
+                    lambda example: {'target': example['label2'] + ' Explanation: ' + example['reason']},
+                    remove_columns=['label2', 'reason'],
+                )
+
+            processed_dataset = datasets.map(
+            function=self.preprocess_data,
+            batched=True)
+
+            train_split_str, dev_split_str, test_split_str = splits
+
+            # Access splits
+            self.train_split = datasets[train_split_str]
+            self.test_split = datasets[test_split_str]
+            self.dev_split = datasets[dev_split_str]
 
 
 
 
     def concat_inputs_and_targets(self, dataset: Dataset) -> Dataset:
         """
-        Concatenate the inputs and outputs in a way that the T5 learns what to predict.
+        Concatenates the inputs and targets of a dataset.
+
+        Args:
+            dataset (Dataset): The dataset to concatenate inputs and targets for.
+
+        Returns:
+            Dataset: The dataset with concatenated inputs and targets.
+
+        Raises:
+            Exception: If there is an error concatenating inputs and targets.
         """
+
         try:
             dataset = dataset.map(
                 lambda example: {'target': example['label']  + ' Rationale: ' + example['rationale']},
@@ -198,7 +221,19 @@ class BaseClassT5:
 
 
     def preprocess_local_data(self, inputs):
+        """
+        Preprocesses the data for the T5 model.
 
+        Args:
+            inputs (dict): The input data to preprocess.
+
+        Returns:
+            dict: The preprocessed input data.
+
+        Raises:
+            Exception: If there is an error preprocessing the data.
+        """
+        # Tokenize the inputs and targets
         model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
         encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length', return_tensors="pt")
@@ -214,24 +249,6 @@ class BaseClassT5:
         # print(model_inputs)
         return model_inputs
 
-
-    # def preprocess_data(self,inputs):
-    #     # print("Inputs: {}".format(inputs))
-    #     model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
-
-
-    #     encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
-    #     model_inputs["labels"] = encoded_targets["input_ids"]
-    #     # print(f"Model Inputs: {model_inputs}")
-
-    #     # Fixing the decoder_input_ids for -100 due to max length
-
-    #     decoder_input_ids = encoded_targets['input_ids']
-    #     # Shift the `decoder_input_ids` to the right and add the start token at the beginning
-    #     # Note: T5 uses the pad token as the start token for decoder_input_ids
-    #     decoder_start_token_id = self.tokenizer.pad_token_id
-    #     decoder_input_ids = torch.cat([torch.full((decoder_input_ids.shape[0], 1), decoder_start_token_id, dtype=torch.long), decoder_input_ids[:, :-1]], dim=1)
-    #     inputs['decoder_input_ids'] = decoder_input_ids
 
 
     #     return model_inputs
