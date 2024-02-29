@@ -66,44 +66,15 @@ def run_different_lrs(split_ratios: list, lr: float = 3e-4):
 
     for i in split_ratio:
         logging_path, weights_path = create_paths("t5-small", lr, i)
-
-        args = Seq2SeqTrainingArguments(
-            predict_with_generate=True,
-            generation_max_length=400,
-            evaluation_strategy="steps",
-            eval_steps=500,
-            save_steps=1000,
-            warmup_steps=500,
-            per_device_train_batch_size=train_batch_size,
-            per_device_eval_batch_size=eval_batch_size,
-            num_train_epochs=5,
-            learning_rate=lr,
-            output_dir= weights_path + "outputs",
-            fp16=use_cuda,
-            logging_dir=weights_path + "logs",
-            logging_steps=100,
-            load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
-            metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
-            # gradient_accumulation_steps=2
-            # remove_unused_columns=False
-        )
-        model = BaseClassT5(
-            model_name="t5-small",
-            training_args=args,
-            path_custom_logs=logging_path,
-            path_model_weights=weights_path,
-            # original_ANLI=True,
-            split_loss=True,
-            ratio=j
-        )
-
-        model.run(
-            dataset_name="modified_anli", 
-            splits=splits[:3],
-            path_training_data="v1/full_r1/",
-            # path_training_data="v1/data/",
-            path_trained_model=weights_path,
-            final_model_name="t5-small"
+        run_modified_anli_with_rationale(
+            splits=splits, 
+            split_ratio=i, 
+            lr=lr, 
+            use_cuda=True, 
+            train_batch_size=8, 
+            eval_batch_size=8, 
+            logging_path=logging_path, 
+            weights_path=weights_path
         )
 
 
@@ -214,7 +185,7 @@ def run_original_anli_with_rationale(
         load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
         metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
     )
-    
+
     model = BaseClassT5(
         model_name=model_name,
         training_args=args,
