@@ -28,7 +28,50 @@ def create_modified_dataset(
 
 
 
+def run_different_lrs(split_ratios: list, lr: float = 3e-4):
+    for i in split_ratio:
+        split_ratio_str = str(i)
+        lr_str = str(lr)
+        weights_path = weights_dir + "t5-small-weights/" + lr_str + "/" + split_ratio_str + "/"
 
+        args = Seq2SeqTrainingArguments(
+            predict_with_generate=True,
+            generation_max_length=400,
+            evaluation_strategy="steps",
+            eval_steps=500,
+            save_steps=1000,
+            warmup_steps=500,
+            per_device_train_batch_size=train_batch_size,
+            per_device_eval_batch_size=eval_batch_size,
+            num_train_epochs=5,
+            learning_rate=lr,
+            output_dir= weights_path + "outputs",
+            fp16=use_cuda,
+            logging_dir=weights_path + "logs",
+            logging_steps=100,
+            load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
+            metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
+            # gradient_accumulation_steps=2
+            # remove_unused_columns=False
+        )
+        model = BaseClassT5(
+            model_name="t5-small",
+            training_args=args,
+            path_custom_logs=logging_path,
+            path_model_weights=weights_path,
+            # original_ANLI=True,
+            split_loss=True,
+            ratio=j
+        )
+
+        model.run(
+            dataset_name="modified_anli", 
+            splits=splits[:3],
+            path_training_data="v1/full_r1/",
+            # path_training_data="v1/data/",
+            path_trained_model=weights_path,
+            final_model_name="t5-small"
+        )
 
 
 
@@ -68,43 +111,47 @@ if __name__ == "__main__":
     logging_path =  logging_dir + "t5-small-logs-split-loss-/" + lr_str + "_" + split_ratio_str + "/"
     logging_path_labels_only = logging_dir + "t5-small-logs-labels-only" + lr_str + "/"
 
-    args = Seq2SeqTrainingArguments(
-                predict_with_generate=True,
-                generation_max_length=400,
-                evaluation_strategy="steps",
-                eval_steps=500,
-                save_steps=1000,
-                warmup_steps=500,
-                per_device_train_batch_size=train_batch_size,
-                per_device_eval_batch_size=eval_batch_size,
-                num_train_epochs=5,
-                learning_rate=lr,
-                output_dir= weights_path + "outputs",
-                fp16=use_cuda,
-                logging_dir=weights_path + "logs",
-                logging_steps=100,
-                load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
-                metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
-                # gradient_accumulation_steps=2
-             # remove_unused_columns=False
-            )
-    model = BaseClassT5(
-        model_name="t5-small",
-        training_args=args,
-        path_custom_logs=logging_path,
-        path_model_weights=weights_path,
-        original_ANLI=True,
-        split_loss=True,
-        ratio=split_ratio
+
+    run_different_lrs(
+        split_ratios=[(0.25, 0.75),(0.5,0.5), (0.75, 0.25)],
+        lr=3e-4
     )
-    model.run(
-        dataset_name="anli", 
-        splits=splits[:3],
-        path_training_data="v1/full_r1/",
-        # path_training_data="v1/data/",
-        path_trained_model=weights_path,
-        final_model_name="t5-small"
-    )
+
+
+
+
+
+
+    # args = Seq2SeqTrainingArguments(
+    #             predict_with_generate=True,
+    #             generation_max_length=400,
+    #             evaluation_strategy="steps",
+    #             eval_steps=500,
+    #             save_steps=1000,
+    #             warmup_steps=500,
+    #             per_device_train_batch_size=train_batch_size,
+    #             per_device_eval_batch_size=eval_batch_size,
+    #             num_train_epochs=5,
+    #             learning_rate=lr,
+    #             output_dir= weights_path + "outputs",
+    #             fp16=use_cuda,
+    #             logging_dir=weights_path + "logs",
+    #             logging_steps=100,
+    #             load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
+    #             metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
+    #             # gradient_accumulation_steps=2
+    #          # remove_unused_columns=False
+    #         )
+    # model = BaseClassT5(
+    #     model_name="t5-small",
+    #     training_args=args,
+    #     path_custom_logs=logging_path,
+    #     path_model_weights=weights_path,
+    #     # original_ANLI=True,
+    #     split_loss=True,
+    #     ratio=split_ratio
+    # )
+
     # model.run(
     #     dataset_name="modified_anli", 
     #     splits=splits[:3],
@@ -119,19 +166,23 @@ if __name__ == "__main__":
     #         predict_with_generate=True,
     #         evaluation_strategy="steps",
     #         eval_steps=500,
+    #         save_steps=1000,
+    #         warmup_steps=500,
     #         per_device_train_batch_size=train_batch_size,
     #         per_device_eval_batch_size=eval_batch_size,
     #         num_train_epochs=5,
     #         learning_rate=lr,
-    #         output_dir= logging_path_labels_only + "outputs",
+    #         output_dir= weights_path_labels_only + "outputs",
     #         fp16=use_cuda,
-    #         logging_dir=logging_path_labels_only + "logs",
-    #         logging_steps=500
+    #         logging_dir=weights_path_labels_only + "logs",
+    #         logging_steps=500,
+    #         load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
+    #         metric_for_best_model='exact_match_accuracy',
     #         # remove_unused_columns=False
     #     )
   
     # model_labels_only = BaseClassT5(
-    #     model_name="t5-base",
+    #     model_name="t5-small",
     #     training_args=args_labels_only,
     #     path_custom_logs=logging_path_labels_only,
     #     baseline_model=True
@@ -144,74 +195,4 @@ if __name__ == "__main__":
     #     # path_training_data="v1/data/",
     #     path_trained_model=logging_path_labels_only,
     #     final_model_name="t5-base-labels"
-    # )
-
-# Run the FLAN model
-    # logging_path_flan = result_dir + "flan-t5-small/"
-    # logging_path_flan_labels_only = result_dir + "flan-t5-small-labels-only/"
-
-    # args_flan = Seq2SeqTrainingArguments(
-    #             predict_with_generate=True,
-    #             evaluation_strategy="steps",
-    #             eval_steps=500,
-    #             per_device_train_batch_size=train_batch_size,
-    #             per_device_eval_batch_size=eval_batch_size,
-    #             num_train_epochs=5,
-    #             learning_rate=5e-5,
-    #             output_dir=logging_path_flan + "outputs",
-    #             fp16=use_cuda,
-    #             logging_dir=logging_path_flan + "logs",
-    #             logging_steps=500
-    #          # remove_unused_columns=False
-    #         )
-
-
-    # model = BaseClassT5(
-    #     model_name="google/flan-t5-small",
-    #     training_args=args_flan,
-    #     path_custom_logs=logging_path_flan,
-    #     baseline_model=False,
-    #     flan=True
-
-    # )
-    # # model.run(
-    # #     dataset_name="modified_anli", 
-    # #     splits=splits[:3],
-    # #     path_training_data="v1/full_r1/",
-    # #     # path_training_data="v1/data/",
-    # #     path_trained_model="v1/model3/",
-    # #     final_model_name="flan-t5-small"
-    # # )
-
-    # args_flan_labels = Seq2SeqTrainingArguments(
-    #             predict_with_generate=True,
-    #             evaluation_strategy="steps",
-    #             eval_steps=50,
-    #             per_device_train_batch_size=train_batch_size,
-    #             per_device_eval_batch_size=eval_batch_size,
-    #             num_train_epochs=5,
-    #             learning_rate=5e-5,
-    #             output_dir= logging_path_flan_labels_only + "outputs",
-    #             fp16=False,
-    #             logging_dir=logging_path_flan_labels_only + "logs",
-    #             logging_steps=50
-    #          # remove_unused_columns=False
-    #         )
-
-
-    # model2 = BaseClassT5(
-    #     model_name="google/flan-t5-small",
-    #     training_args=args_flan_labels,
-    #     path_custom_logs=logging_path_flan_labels_only,
-    #     baseline_model=True,
-    #     flan=True
-
-    # )
-    # model2.run(
-    #     dataset_name="anli", 
-    #     splits=splits[:3],
-    #     path_training_data="v1/full_r1/",
-    #     # path_training_data="v1/data/",
-    #     path_trained_model="v1/model3/",
-    #     final_model_name="flan-t5-small_labels_only"
     # )
