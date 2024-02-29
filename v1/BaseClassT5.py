@@ -480,6 +480,7 @@ class BaseClassT5:
                 logger.debug(self.train_split[0])
                 self.train(early_stop)
                 logger.success("Successfully ran T5 model.")
+                self.test()
                 self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
             except Exception as e:
