@@ -4,6 +4,7 @@ from loguru import logger
 from BaseClassT5 import BaseClassT5
 from transformers import T5Tokenizer, T5ForConditionalGeneration, default_data_collator, Seq2SeqTrainingArguments, Seq2SeqTrainer
 import torch
+import mlflow
 
 
 
@@ -272,7 +273,7 @@ if __name__ == "__main__":
     # logger.success(tool.get_dataset())
     # logger.success(splits[3:6])
     # logger.success(splits[6:])
-
+    mlflow.set_tracking_uri("http://127.0.0.1:5000")
     use_cuda = torch.cuda.is_available()
     print(f"Using GPU: {use_cuda}")
     train_batch_size = 8 if use_cuda else 1
@@ -304,6 +305,7 @@ if __name__ == "__main__":
 run_modified_anli_with_rationale(
     splits=splits[:3],
     split_ratio=(0.5,0.5),
+    use_cuda=use_cuda
     
 )
 
