@@ -468,42 +468,51 @@ class BaseClassT5:
 
 
     def run(self, dataset_name: str, splits:[], path_training_data: str, path_trained_model: str, final_model_name: str, early_stop: bool = True) -> None:
-        """
-        Run the T5 model.
-        """
-        match self.model_type:
-            case 0:
-                logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
-                try:
-                    self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
-                    self.prepare_training()
-                    self.train(early_stop)
-                    self.test()
-                    logger.success("Successfully ran T5 model.")
-                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+            """
+            Runs the T5 model on the specified dataset.
+
+            Args:
+                dataset_name (str): The name of the dataset.
+                splits (list): List of dataset splits.
+                path_training_data (str): The path to the training data.
+                path_trained_model (str): The path to save the trained model.
+                final_model_name (str): The name of the final trained model.
+                early_stop (bool, optional): Whether to use early stopping during training. Defaults to True.
+            """
+            
+            match self.model_type:
+                case 0:
+                    logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
+                    try:
+                        self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
+                        self.prepare_training()
+                        self.train(early_stop)
+                        self.test()
+                        logger.success("Successfully ran T5 model.")
+                        self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
 
-                except Exception as e:
-                    logger.exception(f"Error running T5 model: {e}")
-            case 1:
-                logger.debug(f"Running {self.model_name} model on {dataset_name} with rationale output.")
-                try:
-                    self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                    self.train(early_stop)
-                    logger.success("Successfully ran T5 model.")
-                    self.test()
-                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-                except Exception as e:
-                    logger.exception(f"Error running T5 model: {e}")
-            case 2:
-                    
-                logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
-                try:
-                    self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                    self.train(early_stop)
-                    logger.success("Successfully ran T5 model.")
-                    self.test()
-                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+                    except Exception as e:
+                        logger.exception(f"Error running T5 model: {e}")
+                case 1:
+                    logger.debug(f"Running {self.model_name} model on {dataset_name} with rationale output.")
+                    try:
+                        self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                        self.train(early_stop)
+                        logger.success("Successfully ran T5 model.")
+                        self.test()
+                        self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+                    except Exception as e:
+                        logger.exception(f"Error running T5 model: {e}")
+                case 2:
+                        
+                    logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
+                    try:
+                        self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                        self.train(early_stop)
+                        logger.success("Successfully ran T5 model.")
+                        self.test()
+                        self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
-                except Exception as e:
-                    logger.exception(f"Error running T5 model: {e}")            
+                    except Exception as e:
+                        logger.exception(f"Error running T5 model: {e}")
