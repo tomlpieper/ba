@@ -439,7 +439,7 @@ class BaseClassT5:
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
             if es:
-                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
+                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=8))
 
             train_result = self.trainer.train()
             metrics = train_result.metrics 

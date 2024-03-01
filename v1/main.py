@@ -295,12 +295,18 @@ if __name__ == "__main__":
     #     split_ratios=[(0.25, 0.75),(0.5,0.5), (0.75, 0.25)],
     #     lr=3e-4
     # )
-run_orignal_anli_without_rationale(
+# run_orignal_anli_without_rationale(
+#     splits=splits[:3],
+#     use_cuda=use_cuda,
+#     train_batch_size=train_batch_size,
+#     eval_batch_size=eval_batch_size
+# )
+run_modified_anli_with_rationale(
     splits=splits[:3],
-    use_cuda=use_cuda,
-    train_batch_size=train_batch_size,
-    eval_batch_size=eval_batch_size
+    split_ratio=(0.5,0.5),
+    
 )
+
 
 model_types = {
     0: "modified_anli_with_rationale", 
