@@ -61,8 +61,6 @@ class BaseClassT5:
             self.model_name = model_name
             self.model_type = model_type
             self.split_loss = False if model_type == 2 else True
-                
-            self.split_loss = split_loss
             self.ratio = ratio
             self.path_custom_logs = path_custom_logs
             
@@ -170,6 +168,10 @@ class BaseClassT5:
                     lambda example: {'target': example['label2'] + ' Explanation: ' + example['reason']},
                     remove_columns=['label2', 'reason'],
                 )
+            else:
+                datasets = datasets.map(
+                    lambda example: {'target': label_to_string(example['label'])}
+                )
 
             processed_dataset = datasets.map(
             function=self.preprocess_data,
@@ -178,9 +180,9 @@ class BaseClassT5:
             train_split_str, dev_split_str, test_split_str = splits
 
             # Access splits
-            self.train_split = datasets[train_split_str]
-            self.test_split = datasets[test_split_str]
-            self.dev_split = datasets[dev_split_str]
+            self.train_split = processed_dataset[train_split_str]
+            self.test_split = processed_dataset[test_split_str]
+            self.dev_split = processed_dataset[dev_split_str]
 
 
 
@@ -248,8 +250,11 @@ class BaseClassT5:
     def preprocess_data(self, inputs):
         # Tokenize the inputs and targets
         model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True, padding='max_length')
-        encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True, padding='max_length')
+        if self.model_type:
+
+            encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True, padding='max_length')
         
+
         # Assign the tokenized targets as labels
         model_inputs["labels"] = encoded_targets["input_ids"]
         
@@ -427,7 +432,7 @@ class BaseClassT5:
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
             if es:
-                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
+                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=8))
 
             train_result = self.trainer.train()
             metrics = train_result.metrics 
@@ -495,7 +500,6 @@ class BaseClassT5:
                 logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
                 try:
                     self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                    logger.debug(self.train_split[0])
                     self.train(early_stop)
                     logger.success("Successfully ran T5 model.")
                     self.test()
