@@ -38,19 +38,20 @@ class BaseClassT5:
         model_name: str = "t5-base", 
         training_args: Seq2SeqTrainingArguments = None, 
         path_custom_logs: str = "results", 
-        baseline_model: bool = False, 
-        original_ANLI: bool = False,
+        model_type: int = 0,
         path_model_weights: str = 'results', 
-        flan: bool = False, 
-        split_loss: bool = False, 
         ratio: tuple = (0.5,0.5) 
         ) -> None:
             """
-            Initializes an instance of the BaseClassT5.
+            Initialize the BaseClassT5 class.
 
             Args:
-                model_name (str): The name of the T5 model to be used. Defaults to "t5-base".
-                training_args (Seq2SeqTrainingArguments): The training arguments for the model. Defaults to None.
+                model_name (str, optional): The name of the model to use. Defaults to "t5-base".
+                training_args (Seq2SeqTrainingArguments, optional): The training arguments to use. Defaults to None.
+                path_custom_logs (str, optional): The path to save custom logs. Defaults to "results".
+                model_type (int, optional): The type of model to use. Defaults to 0.
+                path_model_weights (str, optional): The path to the model weights. Defaults to 'results'.
+                ratio (tuple, optional): The ratio for splitting the loss. Defaults to (0.5,0.5).
             """
 
             self.tokenizer = T5Tokenizer.from_pretrained(model_name)
@@ -58,10 +59,9 @@ class BaseClassT5:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model.to(self.device)
             self.model_name = model_name
-            self.split_loss = split_loss
+            self.model_type = model_type
+            self.split_loss = False if model_type == 2 else True
             self.ratio = ratio
-            self.baseline_model = baseline_model
-            self.original_ANLI = original_ANLI
             self.path_custom_logs = path_custom_logs
             
             # Splits to train model on 
@@ -77,13 +77,11 @@ class BaseClassT5:
                 self.training_args = Seq2SeqTrainingArguments(
                     predict_with_generate=True,
                     evaluation_strategy="epoch",
-                    # per_device_train_batch_size=1,
-                    per_device_eval_batch_size=1,
                     num_train_epochs=5,
                     learning_rate=5e-5,
                     output_dir="./t5-base-train",
                     fp16=True
-                 # remove_unused_columns=False
+
                 )
             else:
                 self.training_args = training_args
@@ -110,17 +108,19 @@ class BaseClassT5:
             test = f"{dataset_name}_{splits[1]}"
             dev = f"{dataset_name}_{splits[2]}"
 
+            train_split_str, dev_split_str, test_split_str = splits
+
             # Load datasets
             datasets = load_dataset('json', data_files={
-                "train_r1": f"{path}{train}.json",
-                "test_r1": f"{path}{test}.json",
-                "dev_r1": f"{path}{dev}.json"
+                train_split_str: f"{path}{train}.json",
+                test_split_str: f"{path}{test}.json",
+                dev_split_str: f"{path}{dev}.json"
             })
 
             # Access splits
-            self.train_split = datasets['train_r1']
-            self.test_split = datasets['test_r1']
-            self.dev_split = datasets['dev_r1']
+            self.train_split = datasets[train_split_str]
+            self.test_split = datasets[test_split_str]
+            self.dev_split = datasets[dev_split_str]
 
             logger.success(f"Successfully loaded dataset {dataset_name} from {path}.")
         except FileNotFoundError as e:
@@ -128,61 +128,79 @@ class BaseClassT5:
 
 
     def load_and_process_dataset(self, dataset_name: str, splits: [str]):
-        dataset = load_dataset(dataset_name)
-        # print dataset info for column reason
-        # print(dataset['train_r1'].info.description)
-        datasets = dataset.map(
-            lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
-            remove_columns=['premise', 'hypothesis'],
-        )
+            """
+            Loads and processes a dataset.
 
-         # Conditional logic for label to string conversion with three different cases
-        # def label_to_string(example):
-        #     if example['label'] == 0:  # Assuming 0 is one of the label values
-        #         label_str = 'entailment'
-        #     elif example['label'] == 1:  # Assuming 1 is another label value
-        #         label_str = 'neutral'
-        #     else:  # Default case for any other label value
-        #         label_str = 'contradiction'
-        #     return {'label': label_str}
-        def label_to_string(label):
-            # Define your mapping from numerical label to string
-            label_map = {0: "Entailment", 1: "Neutral", 2: "Contradiction"}
-            # Return the corresponding string label
-            return label_map.get(label, "unknown")
-        # If the dataset is the original ANLI dataset, concatenate the label and reason for generating the original rationale
-        if self.original_ANLI:
+            Args:
+                dataset_name (str): The name of the dataset to load.
+                splits (list[str]): The list of split names to access from the loaded dataset.
 
+            Returns:
+                None
+            """
+            
+            dataset = load_dataset(dataset_name)
 
-            datasets = datasets.filter(
-                lambda example: example['reason'] != '' 
+            datasets = dataset.map(
+                lambda example: {'input': 'Premise: ' + example['premise'] + ' Hypothesis: ' + example['hypothesis']},
+                remove_columns=['premise', 'hypothesis'],
             )
 
-            datasets = datasets.map(
-                lambda example : {'label2' : label_to_string(example['label'])},
-                remove_columns=['label']
-            )
-            datasets = datasets.map(
-                lambda example: {'target': example['label2'] + ' Explanation: ' + example['reason']},
-                remove_columns=['label2', 'reason'],
-            )
+            def label_to_string(label):
+                # Define your mapping from numerical label to string
+                label_map = {0: "Entailment", 1: "Neutral", 2: "Contradiction"}
+                # Return the corresponding string label
+                return label_map.get(label, "unknown")
+
+            # If the dataset is the original ANLI dataset, concatenate the label and reason for generating the original rationale
+            if self.model_type == 1:
 
 
-        processed_dataset = datasets.map(
-        function=self.preprocess_data,
-        batched=True)
+                datasets = datasets.filter(
+                    lambda example: example['reason'] != '' 
+                )
 
-        self.train_split = processed_dataset['train_r1']
-        self.test_split = processed_dataset['test_r1']
-        self.dev_split = processed_dataset['dev_r1']
+                datasets = datasets.map(
+                    lambda example : {'label2' : label_to_string(example['label'])},
+                    remove_columns=['label']
+                )
+                datasets = datasets.map(
+                    lambda example: {'target': example['label2'] + ' Explanation: ' + example['reason']},
+                    remove_columns=['label2', 'reason'],
+                )
+            else:
+                datasets = datasets.map(
+                    lambda example: {'target': label_to_string(example['label'])}
+                )
+
+            processed_dataset = datasets.map(
+            function=self.preprocess_data,
+            batched=True)
+
+            train_split_str, dev_split_str, test_split_str = splits
+
+            # Access splits
+            self.train_split = processed_dataset[train_split_str]
+            self.test_split = processed_dataset[test_split_str]
+            self.dev_split = processed_dataset[dev_split_str]
 
 
 
 
     def concat_inputs_and_targets(self, dataset: Dataset) -> Dataset:
         """
-        Concatenate the inputs and outputs in a way that the T5 learns what to predict.
+        Concatenates the inputs and targets of a dataset.
+
+        Args:
+            dataset (Dataset): The dataset to concatenate inputs and targets for.
+
+        Returns:
+            Dataset: The dataset with concatenated inputs and targets.
+
+        Raises:
+            Exception: If there is an error concatenating inputs and targets.
         """
+
         try:
             dataset = dataset.map(
                 lambda example: {'target': example['label']  + ' Rationale: ' + example['rationale']},
@@ -198,7 +216,19 @@ class BaseClassT5:
 
 
     def preprocess_local_data(self, inputs):
+        """
+        Preprocesses the data for the T5 model.
 
+        Args:
+            inputs (dict): The input data to preprocess.
+
+        Returns:
+            dict: The preprocessed input data.
+
+        Raises:
+            Exception: If there is an error preprocessing the data.
+        """
+        # Tokenize the inputs and targets
         model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
         # print("Model Inputs: {}".format(model_inputs))
         encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length', return_tensors="pt")
@@ -215,31 +245,16 @@ class BaseClassT5:
         return model_inputs
 
 
-    # def preprocess_data(self,inputs):
-    #     # print("Inputs: {}".format(inputs))
-    #     model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True,  padding='max_length')
-
-
-    #     encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True,  padding='max_length')
-    #     model_inputs["labels"] = encoded_targets["input_ids"]
-    #     # print(f"Model Inputs: {model_inputs}")
-
-    #     # Fixing the decoder_input_ids for -100 due to max length
-
-    #     decoder_input_ids = encoded_targets['input_ids']
-    #     # Shift the `decoder_input_ids` to the right and add the start token at the beginning
-    #     # Note: T5 uses the pad token as the start token for decoder_input_ids
-    #     decoder_start_token_id = self.tokenizer.pad_token_id
-    #     decoder_input_ids = torch.cat([torch.full((decoder_input_ids.shape[0], 1), decoder_start_token_id, dtype=torch.long), decoder_input_ids[:, :-1]], dim=1)
-    #     inputs['decoder_input_ids'] = decoder_input_ids
-
 
     #     return model_inputs
     def preprocess_data(self, inputs):
         # Tokenize the inputs and targets
         model_inputs = self.tokenizer(inputs['input'], max_length=self.max_length_token_input, truncation=True, padding='max_length')
-        encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True, padding='max_length')
+        if self.model_type:
+
+            encoded_targets = self.tokenizer([str(label) for label in inputs['target']], max_length=self.max_length_token_output, truncation=True, padding='max_length')
         
+
         # Assign the tokenized targets as labels
         model_inputs["labels"] = encoded_targets["input_ids"]
         
@@ -331,7 +346,7 @@ class BaseClassT5:
         f1_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
 
         # exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
-        if self.original_ANLI:
+        if self.model_type == 1:
             for pred, ref in zip(preds, refs):
 
                 print(f"Prediction: {pred}" )
@@ -399,7 +414,7 @@ class BaseClassT5:
         try:
             all_metrics = {"epoch": [], "exact_match_accuracy": [], "label_accuracy": [], "rationale_bleu_score": [], "precision": [], "recall": [], "f1_score": []}
 
-            if self.baseline_model :
+            if self.model_type == 2:
                 metrics = self.compute_exact_match
             else:
                 metrics = self.compute_metrics
@@ -417,7 +432,7 @@ class BaseClassT5:
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
             if es:
-                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=5))
+                self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=8))
 
             train_result = self.trainer.train()
             metrics = train_result.metrics 
@@ -456,41 +471,39 @@ class BaseClassT5:
         """
         Run the T5 model.
         """
-        if self.baseline_model:
-            logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
-            try:
-                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                logger.debug(self.train_split[0])
-                self.train(early_stop)
-                logger.success("Successfully ran T5 model.")
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
-
-
-        elif self.original_ANLI:
-            logger.debug(f"Running {self.model_name} model on {dataset_name} with rationale output.")
-            try:
-                self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
-                self.train(early_stop)
-                logger.success("Successfully ran T5 model.")
-                self.test()
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
+        match self.model_type:
+            case 0:
+                logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
+                try:
+                    self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
+                    self.prepare_training()
+                    self.train(early_stop)
+                    self.test()
+                    logger.success("Successfully ran T5 model.")
+                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
 
-        else:
-            logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
-            try:
-                self.load_local_dataset(dataset_name=dataset_name, splits=splits, path=path_training_data)
-                self.prepare_training()
-                self.train(early_stop)
-                self.test()
-                logger.success("Successfully ran T5 model.")
-                self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+                except Exception as e:
+                    logger.exception(f"Error running T5 model: {e}")
+            case 1:
+                logger.debug(f"Running {self.model_name} model on {dataset_name} with rationale output.")
+                try:
+                    self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                    self.train(early_stop)
+                    logger.success("Successfully ran T5 model.")
+                    self.test()
+                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
+                except Exception as e:
+                    logger.exception(f"Error running T5 model: {e}")
+            case 2:
+                    
+                logger.debug(f"Running {self.model_name} model on {dataset_name} without rationale output.")
+                try:
+                    self.load_and_process_dataset(dataset_name=dataset_name, splits=splits)
+                    self.train(early_stop)
+                    logger.success("Successfully ran T5 model.")
+                    self.test()
+                    self.save_model_and_tokenizer(path=path_trained_model, model_name=final_model_name)
 
-
-            except Exception as e:
-                logger.exception(f"Error running T5 model: {e}")
+                except Exception as e:
+                    logger.exception(f"Error running T5 model: {e}")            
