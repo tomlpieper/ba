@@ -5,9 +5,16 @@ from BaseClassT5 import BaseClassT5
 from transformers import T5Tokenizer, T5ForConditionalGeneration, default_data_collator, Seq2SeqTrainingArguments, Seq2SeqTrainer
 import torch
 import mlflow
+import os
 
-
-
+torch.distributed.init_process_group('NCCL')
+local_rank = int(os.environ['LOCAL_RANK'])
+torch.cuda.set_device(local_rank)
+device = torch.device("cuda", local_rank)
+print(f"Device: {device}")
+cuda_visible = os.environ['CUDA_VISIBLE_DEVICES']
+print(f"CUDA_VISIBLE_DEVICES: {cuda_visible}")
+print(f"NCCL found: {torch.distributed.is_nccl_available()}")
 
 def create_modified_dataset(
     splits: list, 
@@ -109,9 +116,9 @@ def run_modified_anli_with_rationale(
         predict_with_generate=True,
         generation_max_length=400,
         evaluation_strategy="steps",
-        eval_steps=500,
-        save_steps=1000,
-        warmup_steps=500,
+        eval_steps=50,
+        save_steps=50,
+        warmup_steps=50,
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=eval_batch_size,
         num_train_epochs=5,
@@ -119,9 +126,10 @@ def run_modified_anli_with_rationale(
         output_dir= weights_path + "outputs",
         fp16=use_cuda,
         logging_dir=weights_path + "logs",
-        logging_steps=100,
+        logging_steps=5,
         load_best_model_at_end=True,     # Load the best model when finished training (default metric is loss)
-        metric_for_best_model='label_accuracy', # Use accuracy as the best metric unless it is baselineModel then use exact_match
+        metric_for_best_model='label_accuracy',
+        local_rank=local_rank # Use accuracy as the best metric unless it is baselineModel then use exact_match
     )
 
     model = BaseClassT5(
@@ -136,7 +144,8 @@ def run_modified_anli_with_rationale(
     model.run(
         dataset_name="modified_anli", 
         splits=splits,
-        path_training_data="v1/full_r1/",
+        # path_training_data="v1/full_r1/",
+        path_training_data="/netscratch/tpieper/v1/full_r1/",
         path_trained_model=weights_path,
         final_model_name=model_name
     )
@@ -199,7 +208,8 @@ def run_original_anli_with_rationale(
     model.run(
         dataset_name="anli", 
         splits=splits,
-        path_training_data="v1/full_r1/",
+        path_training_data="/netscratch/tpieper/v1/full_r1/",
+        # path_training_data="v1/full_r1/",
         path_trained_model=weights_path,
         final_model_name=model_name
     )
@@ -260,7 +270,8 @@ def run_orignal_anli_without_rationale(
     model.run(
         dataset_name="anli", 
         splits=splits,
-        path_training_data="v1/full_r1/",
+        # path_training_data="v1/full_r1/",
+        path_training_data="/netscratch/tpieper/v1/full_r1/",
         path_trained_model=weights_path,
         final_model_name=model_name
     )
@@ -273,11 +284,13 @@ if __name__ == "__main__":
     # logger.success(tool.get_dataset())
     # logger.success(splits[3:6])
     # logger.success(splits[6:])
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")
+    # mlflow.set_tracking_uri("http://127.0.0.1:5000")
     use_cuda = torch.cuda.is_available()
     print(f"Using GPU: {use_cuda}")
-    train_batch_size = 8 if use_cuda else 1
-    eval_batch_size = 8 if use_cuda else 1
+    # train_batch_size = 8 if use_cuda else 1
+    # eval_batch_size = 8 if use_cuda else 1
+    train_batch_size = 64 if use_cuda else 1
+    eval_batch_size = 64 if use_cuda else 1
 
 
     # create_modified_dataset(splits[:3], amount_training_examples=100000, path='v1/full_r1/')
@@ -305,9 +318,10 @@ if __name__ == "__main__":
 run_modified_anli_with_rationale(
     splits=splits[:3],
     split_ratio=(0.5,0.5),
-    use_cuda=use_cuda
-    
-)
+    use_cuda=use_cuda,
+    train_batch_size=train_batch_size,
+    eval_batch_size=eval_batch_size
+    )
 
 
 model_types = {
