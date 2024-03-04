@@ -30,7 +30,7 @@ from callbacks import CustomCallback
 from nltk.translate.bleu_score import sentence_bleu
 import numpy as np
 
-from torch.nn.parallel import DistributedDataParallel as DDP
+# from torch.nn.parallel import DistributedDataParallel as DDP
 from datasets.distributed import split_dataset_by_node
 
 
@@ -56,13 +56,13 @@ class BaseClassT5:
                 ratio (tuple, optional): The ratio for splitting the loss. Defaults to (0.5,0.5).
             """
             local_rank = int(os.environ['LOCAL_RANK'])
-            torch.cuda.set_device(local_rank)
-            self.device = torch.device("cuda", local_rank)
+            # torch.cuda.set_device(local_rank)
+            # self.device = torch.device("cuda", local_rank)
             self.tokenizer = T5Tokenizer.from_pretrained(model_name)
             self.model = T5ForConditionalGeneration.from_pretrained(model_name)
             # self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.model.to(self.device)
-            self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank)
+            # self.model.to(self.device)
+            # self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank)
             self.model_name = model_name
             self.model_type = model_type
             self.split_loss = False if model_type == 2 else True
@@ -131,8 +131,9 @@ class BaseClassT5:
             self.train_split = datasets[train_split_str]
             self.test_split = datasets[test_split_str]
             self.dev_split = datasets[dev_split_str]
-            
-            train_split = split_dataset_by_node(self.train_split, rank=int(os.environ["RANK"]), world_size=int(os.environ["WORLD_SIZE"]))
+
+            # train_split = split_dataset_by_node(self.train_split, rank=int(os.environ["RANK"]), world_size=int(os.environ["WORLD_SIZE"]))
+
             logger.success(f"Successfully loaded dataset {dataset_name} from {path}.")
         except FileNotFoundError as e:
             logger.exception(f"Error loading dataset: {e}")

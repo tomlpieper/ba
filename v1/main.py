@@ -11,10 +11,11 @@ torch.distributed.init_process_group('NCCL')
 local_rank = int(os.environ['LOCAL_RANK'])
 torch.cuda.set_device(local_rank)
 device = torch.device("cuda", local_rank)
-print(f"Device: {device}")
 cuda_visible = os.environ['CUDA_VISIBLE_DEVICES']
+print(f"Device: {device}")
 print(f"CUDA_VISIBLE_DEVICES: {cuda_visible}")
 print(f"NCCL found: {torch.distributed.is_nccl_available()}")
+print(f"Local Rank: {local_rank}")
 
 def create_modified_dataset(
     splits: list, 
