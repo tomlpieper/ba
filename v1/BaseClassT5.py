@@ -195,9 +195,9 @@ class BaseClassT5:
             train_split_str, dev_split_str, test_split_str = splits
 
             # Access splits
-            self.train_split = processed_dataset[train_split_str].shuffle(seed=32)
-            self.test_split = processed_dataset[test_split_str].shuffle(seed=32)
-            self.dev_split = processed_dataset[dev_split_str].shuffle(seed=32)
+            self.train_split = processed_dataset[train_split_str].shuffle(seed=42)
+            self.test_split = processed_dataset[test_split_str].shuffle(seed=42)
+            self.dev_split = processed_dataset[dev_split_str].shuffle(seed=42)
             # self.train_split = processed_dataset[train_split_str]
             # self.test_split = processed_dataset[test_split_str]
             # self.dev_split = processed_dataset[dev_split_str]
@@ -334,9 +334,9 @@ class BaseClassT5:
             logger.exception(f"Error preprocessing data: {e}")
 
         # Shuffle Datasets
-        # self.train_split = self.train_split.shuffle(seed=42)
-        # self.test_split = self.test_split.shuffle(seed=42)
-        # self.dev_split = self.dev_split.shuffle(seed=42)
+        self.train_split = self.train_split.shuffle(seed=42)
+        self.test_split = self.test_split.shuffle(seed=42)
+        self.dev_split = self.dev_split.shuffle(seed=42)
 
 
 
