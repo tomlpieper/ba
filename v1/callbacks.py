@@ -26,9 +26,9 @@ class CustomCallback(TrainerCallback):
     def on_train_end(self, args, state, control, **kwargs):
         logger.info("Finished training")
         self._finished = True
-        dc = self.evaluate_on_training_data(state, control, train_and_eval=True)
-        if dc:
-            return dc
+        # dc = self.evaluate_on_training_data(state, control, train_and_eval=True)
+        # if dc:
+        #     return dc
 
     def on_init_end(self, args,  state, control, **kwargs):
         # ("Finished init of trainer")
@@ -48,11 +48,12 @@ class CustomCallback(TrainerCallback):
         pass
 
     def on_evaluate(self, args, state, control, **kwargs):
-        # pass
-        if not self._finished:
-            dc = self.evaluate_on_training_data(state, control)
-            if dc:
-                return dc
+        state.save_to_json(self.custom_logs_path + "eval_metrics.json")
+         # pass
+        # if not self._finished:
+        #     dc = self.evaluate_on_training_data(state, control)
+        #     if dc:
+        #         return dc
        
 
     def evaluate_on_training_data(self, state, control, train_and_eval:bool = False, **kwargs):

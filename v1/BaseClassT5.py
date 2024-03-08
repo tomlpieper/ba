@@ -41,6 +41,7 @@ class BaseClassT5:
         training_args: Seq2SeqTrainingArguments = None, 
         path_custom_logs: str = "results", 
         model_type: int = 0,
+        v2: bool = False,
         path_model_weights: str = 'results', 
         ratio: tuple = (0.5,0.5) 
         ) -> None:
@@ -70,6 +71,8 @@ class BaseClassT5:
             self.path_custom_logs = path_custom_logs
             
             # Splits to train model on 
+            self.v2 = v2
+            self.dataset_name = None
             self.train_split = None
             self.test_split = None
             self.dev_split = None
@@ -192,9 +195,12 @@ class BaseClassT5:
             train_split_str, dev_split_str, test_split_str = splits
 
             # Access splits
-            self.train_split = processed_dataset[train_split_str]
-            self.test_split = processed_dataset[test_split_str]
-            self.dev_split = processed_dataset[dev_split_str]
+            self.train_split = processed_dataset[train_split_str].shuffle(seed=32)
+            self.test_split = processed_dataset[test_split_str].shuffle(seed=32)
+            self.dev_split = processed_dataset[dev_split_str].shuffle(seed=32)
+            # self.train_split = processed_dataset[train_split_str]
+            # self.test_split = processed_dataset[test_split_str]
+            # self.dev_split = processed_dataset[dev_split_str]
 
 
 
@@ -212,10 +218,11 @@ class BaseClassT5:
         Raises:
             Exception: If there is an error concatenating inputs and targets.
         """
+        concat_str = ' Explanation: ' if self.v2 else ' Rationale: '
 
         try:
             dataset = dataset.map(
-                lambda example: {'target': example['label']  + ' Rationale: ' + example['rationale']},
+                lambda example: {'target': example['label']  + concat_str + example['rationale']},
                 remove_columns=['label', 'rationale'],
             )
             dataset = dataset.map(
@@ -327,9 +334,9 @@ class BaseClassT5:
             logger.exception(f"Error preprocessing data: {e}")
 
         # Shuffle Datasets
-        self.train_split = self.train_split.shuffle(seed=42)
-        self.test_split = self.test_split.shuffle(seed=42)
-        self.dev_split = self.dev_split.shuffle(seed=42)
+        # self.train_split = self.train_split.shuffle(seed=42)
+        # self.test_split = self.test_split.shuffle(seed=42)
+        # self.dev_split = self.dev_split.shuffle(seed=42)
 
 
 
@@ -358,11 +365,11 @@ class BaseClassT5:
         f1_scores = {label: [] for label in ['Entailment', 'Neutral', 'Contradiction']}
 
         # exact_matches = [1 if pred == ref else 0 for pred, ref in zip(preds, refs)]
-        if self.model_type == 1:
+        if self.model_type == 1 or self.v2:
             for pred, ref in zip(preds, refs):
 
-                print(f"Prediction: {pred}" )
-                print(f"Reference: {ref}" )
+                # print(f"Prediction: {pred}" )
+                # print(f"Reference: {ref}" )
 
                 if " Explanation: " in pred:
                     pred_label, pred_rationale = pred.split(" Explanation: ", 1)
@@ -443,7 +450,7 @@ class BaseClassT5:
                 # callbacks=[MyCallback]
             )
             self.trainer.add_callback(CustomCallback(self.trainer, custom_logs_path=self.path_custom_logs)) 
-            self.trainer.add_callback(MLflowCallback()) 
+            # self.trainer.add_callback(MLflowCallback()) 
             if es:
                 self.trainer.add_callback(EarlyStoppingCallback(early_stopping_patience=8))
 
@@ -492,7 +499,7 @@ class BaseClassT5:
                 final_model_name (str): The name of the final trained model.
                 early_stop (bool, optional): Whether to use early stopping during training. Defaults to True.
             """
-            
+            self.dataset_name = dataset_name
             match self.model_type:
                 case 0:
                     logger.debug(f"Running {self.model_name} on {dataset_name} with rationale output.")
