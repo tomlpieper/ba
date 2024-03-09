@@ -43,7 +43,8 @@ class BaseClassT5:
         model_type: int = 0,
         v2: bool = False,
         path_model_weights: str = 'results', 
-        ratio: tuple = (0.5,0.5) 
+        ratio: tuple = (0.5,0.5),
+        dataset_name: str = None
         ) -> None:
             """
             Initialize the BaseClassT5 class.
@@ -59,7 +60,7 @@ class BaseClassT5:
             local_rank = int(os.environ['LOCAL_RANK'])
             # torch.cuda.set_device(local_rank)
             # self.device = torch.device("cuda", local_rank)
-            self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+            self.tokenizer = T5Tokenizer.from_pretrained("t5-small")
             self.model = T5ForConditionalGeneration.from_pretrained(model_name)
             # self.device = "cuda" if torch.cuda.is_available() else "cpu"
             # self.model.to(self.device)
@@ -72,7 +73,7 @@ class BaseClassT5:
             
             # Splits to train model on 
             self.v2 = v2
-            self.dataset_name = None
+            self.dataset_name = dataset_name
             self.train_split = None
             self.test_split = None
             self.dev_split = None
