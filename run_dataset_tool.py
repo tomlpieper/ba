@@ -33,7 +33,7 @@ def create_modified_dataset(
 
 if __name__ == "__main__":
     client = OpenAI(organization='org-U1REoyfP2aBfZm9zTzz5uWUo')
-    tool = DatasetTool(dataset_name='anli', client=client)
+    tool = DatasetTool(dataset_name='anli', client=client, v2=False)
     splits = ['train_r1', 'dev_r1', 'test_r1', 'train_r2', 'dev_r2', 'test_r2', 'train_r3', 'dev_r3', 'test_r3']
     # logger.success(tool.get_dataset())
     # logger.success(splits[3:6])
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # train_batch_size = 8 if use_cuda else 1
     # eval_batch_size = 8 if use_cuda else 1
 
-    create_modified_dataset(splits[:3], amount_training_examples=100000, path='/Users/tompieper/code_3/v2/full_r1/')
+    create_modified_dataset(splits[:3], amount_training_examples=100000, path='/Users/tompieper/code_3/v4/full_r1/')
     # create_modified_dataset(splits[3:6], amount_training_examples=100000, path='v1/full_r2/')
     # create_modified_dataset(splits[6:], amount_training_examples=1000000, path='v1/full_r3/')
     # create_modified_dataset(['test_r1'], amount_training_examples=100, path='data/')
