@@ -39,62 +39,48 @@ from nltk.translate.bleu_score import sentence_bleu
 
 file_paths_metrics = {
     "baselines": [
-        "/netscratch/tpieper/v3/baseline/logs/t5-small-logs/0.0006/metrics.json",
-        "/netscratch/tpieper/v3/baseline/logs/t5-small-logs/0.0012/metrics.json",
-        "/netscratch/tpieper/v3/baseline/logs/t5-small-logs/0.0024/metrics.json"
+        "/netscratch/tpieper/v4/baseline/logs/t5-small-logs/0.0036/metrics.json",
+        "/netscratch/tpieper/v4/baseline/logs/t5-small-logs/0.0048/metrics.json"
     ],
     "modified": [
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0006_(0.25, 0.75)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0012_(0.25, 0.75)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0024_(0.25, 0.75)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0006_(0.5, 0.5)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0012_(0.5, 0.5)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0024_(0.5, 0.5)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0006_(0.75, 0.25)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0012_(0.75, 0.25)/metrics.json",
-        "/netscratch/tpieper/v2logs/t5-small-logs/0.0024_(0.75, 0.25)/metrics.json"
+        "/netscratch/tpieper/v4/v1_data/logs/t5-small-logs/0.0036_(0.25, 0.75)/metrics.json",
+        "/netscratch/tpieper/v4/v1_data/logs/t5-small-logs/0.0048_(0.25, 0.75)/metrics.json",
+        "/netscratch/tpieper/v4/v1_data/logs/t5-small-logs/0.0036_(0.5, 0.5)/metrics.json",
+        "/netscratch/tpieper/v4/v1_data/logs/t5-small-logs/0.0048_(0.5, 0.5)/metrics.json",
+        "/netscratch/tpieper/v4/v1_data/logs/t5-small-logs/0.0036_(0.75, 0.25)/metrics.json",
+        "/netscratch/tpieper/v4/v1_data/logs/t5-small-logs/0.0048_(0.75, 0.25)/metrics.json"
     ],
     "modified_2": [
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0006_(0.25, 0.75)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0012_(0.25, 0.75)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0024_(0.25, 0.75)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0006_(0.5, 0.5)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0012_(0.5, 0.5)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0024_(0.5, 0.5)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0006_(0.75, 0.25)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0012_(0.75, 0.25)/metrics.json",
-        "/netscratch/tpieper/v3/logs/t5-small-logs/0.0024_(0.75, 0.25)/metrics.json"
+        "/netscratch/tpieper/v4/logs/t5-small-logs/0.0036_(0.25, 0.75)/metrics.json",
+        "/netscratch/tpieper/v4/logs/t5-small-logs/0.0048_(0.25, 0.75)/metrics.json",
+        "/netscratch/tpieper/v4/logs/t5-small-logs/0.0036_(0.5, 0.5)/metrics.json",
+        "/netscratch/tpieper/v4/logs/t5-small-logs/0.0048_(0.5, 0.5)/metrics.json",
+        "/netscratch/tpieper/v4/logs/t5-small-logs/0.0036_(0.75, 0.25)/metrics.json",
+        "/netscratch/tpieper/v4/logs/t5-small-logs/0.0048_(0.75, 0.25)/metrics.json"
     ]
 }
 
 file_paths_weights = {
     "baselines": [
-        "/netscratch/tpieper/v3/baseline/results/t5-small-weights/0.0006/outputs",
-        "/netscratch/tpieper/v3/baseline/results/t5-small-weights/0.0012/outputs",
-        "/netscratch/tpieper/v3/baseline/results/t5-small-weights/0.0024/outputs"
+        "/netscratch/tpieper/v4/baseline/results/t5-small-weights/0.0036/outputs",
+        "/netscratch/tpieper/v4/baseline/results/t5-small-weights/0.0048/outputs"
     ],
     "modified": [
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0006/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0012/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0024/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0006/(0.5, 0.5)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0012/(0.5, 0.5)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0024/(0.5, 0.5)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0006/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0012/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v2results/t5-small-weights/0.0024/(0.25, 0.75)/outputs"
+        "/netscratch/tpieper/v4/v1_data/results/t5-small-weights/0.0036/(0.25, 0.75)/outputs",
+        "/netscratch/tpieper/v4/v1_data/results/t5-small-weights/0.0048/(0.25, 0.75)/outputs",
+        "/netscratch/tpieper/v4/v1_data/results/t5-small-weights/0.0036/(0.5, 0.5)/outputs",
+        "/netscratch/tpieper/v4/v1_data/results/t5-small-weights/0.0048/(0.5, 0.5)/outputs",
+        "/netscratch/tpieper/v4/v1_data/results/t5-small-weights/0.0036/(0.75, 0.25)/outputs",
+        "/netscratch/tpieper/v4/v1_data/results/t5-small-weights/0.0048/(0.75, 0.25)/outputs"
 
     ],
     "modified_2": [
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0006/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0012/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0024/(0.25, 0.75)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0006/(0.5, 0.5)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0012/(0.5, 0.5)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0024/(0.5, 0.5)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0006/(0.75, 0.25)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0012/(0.75, 0.25)/outputs",
-        "/netscratch/tpieper/v3/results/t5-small-weights/0.0024/(0.75, 0.25)/outputs"
+        "/netscratch/tpieper/v4/results/t5-small-weights/0.0036/(0.25, 0.75)/outputs",
+        "/netscratch/tpieper/v4/results/t5-small-weights/0.0048/(0.25, 0.75)/outputs",
+        "/netscratch/tpieper/v4/results/t5-small-weights/0.0036/(0.5, 0.5)/outputs",
+        "/netscratch/tpieper/v4/results/t5-small-weights/0.0048/(0.5, 0.5)/outputs",
+        "/netscratch/tpieper/v4/results/t5-small-weights/0.0036/(0.75, 0.25)/outputs",
+        "/netscratch/tpieper/v4/results/t5-small-weights/0.0048/(0.75, 0.25)/outputs"
     ]
 
 }
@@ -221,7 +207,7 @@ def test_on_best_label_accuracy(
     train_batch_size: int = 32,
     eval_batch_size: int = 32,
     eval_steps: int = 132,
-    base_path: str = "/netscratch/tpieper/tests/",
+    base_path: str = "/netscratch/tpieper/tests_v4/",
     data_path: str = "/netscratch/tpieper/v1/full_r1/",
     model_name: str = "t5-small",
     v2: bool = False,
@@ -333,28 +319,31 @@ def test_on_best_label_accuracy(
 
 if __name__ == "__main__":
 
+    os.makedirs("v4_comp/", exist_ok=True)
 
     check_access()
-    # df = jls_extract_def()
-    # results = get_test_results(df)
-    # print(results)
-    # # results.to_csv(path + "alterntive_test_results.csv")
-    # # write to json
-    # results.to_json("alternative_test_results.json")
+    df = jls_extract_def()
+    logger.debug(df)
+    df.to_json("v4_comp/dataframe.json")
+    results = get_test_results(df)
+    print(results)
+    # results.to_csv(path + "alterntive_test_results.csv")
+    # write to json
+    results.to_json("v4_comp/alternative_test_results.json")
 
     # result1 = test_on_best_label_accuracy(
     #             model_name='/netscratch/tpieper/v4/baseline/results/t5-small-weights/0.0036/outputs/checkpoint-1320',
     #             v2=False,
     #             model_type=2,
     # )     
-    result2 = test_on_best_label_accuracy(
-                model_name='/netscratch/tpieper/v4/baseline/results/t5-small-weights/0.0048/outputs/checkpoint-1320',
-                v2=False,
-                model_type=2,
-    )     
-    os.makedirs("newBL", exist_ok=True)
-    # result1.to_json("newBL/alternative_test_results0.0036.json")
-    result2.to_json("newBL/alternative_test_results0.0048.json")
+    # result2 = test_on_best_label_accuracy(
+    #             model_name='/netscratch/tpieper/v4/baseline/results/t5-small-weights/0.0048/outputs/checkpoint-1320',
+    #             v2=False,
+    #             model_type=2,
+    # )     
+    # os.makedirs("newBL", exist_ok=True)
+    # # result1.to_json("newBL/alternative_test_results0.0036.json")
+    # result2.to_json("newBL/alternative_test_results0.0048.json")
 
 
 

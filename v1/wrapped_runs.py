@@ -236,7 +236,7 @@ def run_original_anli_without_rationale(
         path_custom_logs=logging_path,
         path_model_weights=weights_path,
         model_type=2
-    )
+    ) 
 
     model.run(
         dataset_name="anli", 

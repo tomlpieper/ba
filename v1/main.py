@@ -104,29 +104,28 @@ if __name__ == "__main__":
     #     )
 
     # Run different loss ratios on cluster for mR1 and T5-Small
-    # for i in [
-    #     (0.25, 0.75),
-    #     (0.5,0.5), 
-    #     (0.75, 0.25)
-    #     ]: 
-    #     for j in [
-    #         6e-4, 
-    #         0.0012, 
-    #         0.0024
-    #         ]:
-    #         run_modified_anli_with_rationale(
-    #             splits=splits[:3], 
-    #             split_ratio=i, 
-    #             lr=j, 
-    #             epochs=5,
-    #             use_cuda=True, 
-    #             train_batch_size=32, 
-    #             eval_batch_size=32,
-    #             eval_steps=132, 
-    #             base_path="/netscratch/tpieper/v2",
-    #             data_path="/netscratch/tpieper/v1/full_r1/",
-    #             model_name="t5-small"
-    #         )
+    for i in [
+        (0.25, 0.75),
+        (0.5,0.5), 
+        (0.75, 0.25)
+        ]: 
+        for j in [
+            0.0036, 
+            0.0048
+            ]:
+            run_modified_anli_with_rationale(
+                splits=splits[:3], 
+                split_ratio=i, 
+                lr=j, 
+                epochs=5,
+                use_cuda=True, 
+                train_batch_size=32, 
+                eval_batch_size=32,
+                eval_steps=132, 
+                base_path="/netscratch/tpieper/v4/v1_data/",
+                data_path="/netscratch/tpieper/v1/full_r1/",
+                model_name="t5-small"
+            )
 
     # run_original_anli_with_rationale(
     #     splits=splits[:3],
@@ -158,42 +157,50 @@ if __name__ == "__main__":
     # )
 
     # Run original ANLI without rationale on V2
-    for i in [6e-4, 0.0012, 0.0024]:
-        run_original_anli_without_rationale(
-            splits=splits[:3],
-            lr=i,
-            train_batch_size=32,
-            eval_batch_size=32,
-            eval_steps=132,
-            base_path="/netscratch/tpieper/v3/baseline/",
-            data_path="/netscratch/tpieper/v2/full_r1/",
-            model_name="t5-small"
-        )
-
-    # Run V2 Dataset for different split ratios and learning rates
-    for i in [
-        (0.25, 0.75),
-        (0.5,0.5),
-        (0.75, 0.25)
-        ]:
-        for j in [
-            6e-4,
-            0.0012,
-            0.0024
-            ]:
-            run_modified_anli_with_rationale(
-                splits=splits[:3],
-                split_ratio=i,
-                lr=j,
-                epochs=5,
-                use_cuda=True,
-                train_batch_size=32,
-                eval_batch_size=32,
-                eval_steps=132,
-                base_path="/netscratch/tpieper/v3/",
-                data_path="/netscratch/tpieper/v2/full_r1/",
-                model_name="t5-small"
-            )
+    # for i in [0.0036, 0.0048]:
+    #     run_original_anli_without_rationale(
+    #         splits=splits[:3],
+    #         lr=i,
+    #         train_batch_size=32,
+    #         eval_batch_size=32,
+    #         eval_steps=132,
+    #         base_path="/netscratch/tpieper/v4/baseline/",
+    #         data_path="/netscratch/tpieper/v2/full_r1/",
+    #         model_name="t5-small"
+    #     )
+    # run_original_anli_without_rationale(
+    #     splits=splits[:3],
+    #     lr=0.0048,
+    #     train_batch_size=32,
+    #     eval_batch_size=32,
+    #     eval_steps=132,
+    #     base_path="/netscratch/tpieper/v4/baseline/",
+    #     data_path="/netscratch/tpieper/v2/full_r1/",
+    # )
+    # # Run V2 Dataset for different split ratios and learning rates
+    # for i in [
+    #     (0.25, 0.75),
+    #     (0.5,0.5),
+    #     (0.75, 0.25)
+    #     ]:
+    #     for j in [
+    #         0.0036,
+    #         0.0048
+    #         # 0.006
+    #         ]:
+    #         run_modified_anli_with_rationale(
+    #             splits=splits[:3],
+    #             split_ratio=i,
+    #             lr=j,
+    #             epochs=5,
+    #             use_cuda=True,
+    #             train_batch_size=32,
+    #             eval_batch_size=32,
+    #             eval_steps=132,
+    #             base_path="/netscratch/tpieper/v4/",
+    #             data_path="/netscratch/tpieper/v2/full_r1/",
+    #             model_name="t5-small"
+    #         )
     # logger.debug("Finished running modified ANLI with rationale on V2.")
 
 
